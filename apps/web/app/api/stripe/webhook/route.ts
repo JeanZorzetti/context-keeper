@@ -27,6 +27,35 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
+      case "checkout.session.completed": {
+        const checkoutSession = event.data.object as Stripe.Checkout.Session;
+        const auth0Id = checkoutSession.metadata?.auth0Id;
+        const customerId = checkoutSession.customer as string;
+
+        if (!auth0Id) {
+          console.warn("Checkout session missing auth0Id metadata");
+          break;
+        }
+
+        // Find user by auth0Id and update stripeId if not already set
+        const user = await prisma.user.findUnique({
+          where: { auth0Id },
+        });
+
+        if (user) {
+          if (!user.stripeId) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { stripeId: customerId },
+            });
+            console.log(`Linked user ${user.id} to Stripe customer ${customerId}`);
+          }
+        } else {
+          console.warn(`User not found for auth0Id ${auth0Id}`);
+        }
+        break;
+      }
+
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
