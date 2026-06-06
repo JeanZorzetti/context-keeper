@@ -1,0 +1,10 @@
+{
+  "name": "context-keeper",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "test:web": "pnpm --filter web test"
+  }
+}
