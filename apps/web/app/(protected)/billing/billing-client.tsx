@@ -144,7 +144,7 @@ export default function BillingClient({
               ))}
             </ul>
           </div>
-          {currentPlan !== "FREE" && (
+          {currentPlan !== "FREE" && currentPlan !== "LIFETIME" && (
             <div className="text-right space-y-3">
               {message && (
                 <div
