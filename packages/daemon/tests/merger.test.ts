@@ -153,7 +153,7 @@ describe('findContextFiles', () => {
 // resolveProjectDir
 // ---------------------------------------------------------------------------
 describe('resolveProjectDir', () => {
-  it('decodes URL-encoded project path from transcript path', () => {
+  it('decodes URL-encoded project path from transcript path (Unix format)', () => {
     const transcriptPath = '/home/user/.claude/projects/%2Fhome%2Fuser%2Fmyproject/abc123.jsonl';
     const result = resolveProjectDir(transcriptPath);
     expect(result).toBe('/home/user/myproject');
@@ -163,5 +163,25 @@ describe('resolveProjectDir', () => {
     const transcriptPath = '/home/user/.claude/projects/%ZZ/abc.jsonl';
     const result = resolveProjectDir(transcriptPath);
     expect(result).toBeNull();
+  });
+
+  it('decodes dash-encoded project path from transcript path (Windows format)', () => {
+    // Windows format: c--users--jeanz--onedrive--desktop--roi--labs--context--keeper
+    // Should decode to: C:\Users\Jeanz\OneDrive\Desktop\ROI Labs\context-keeper (with appropriate sep)
+    const transcriptPath = `C:\\Users\\user\\.claude\\projects\\c--users--jeanz--onedrive--desktop--roi--labs--context--keeper\\abc123.jsonl`;
+    const result = resolveProjectDir(transcriptPath);
+
+    // Result should start with drive letter and contain separated path components
+    expect(result).toBeTruthy();
+    expect(result).toMatch(/^[Cc]:/);
+    expect(result).toContain('users');
+    expect(result).toContain('context');
+  });
+
+  it('handles dash-encoded Windows path with multiple components', () => {
+    const transcriptPath = 'C:\\home\\.claude\\projects\\c--tmp--myproject\\session.jsonl';
+    const result = resolveProjectDir(transcriptPath);
+    expect(result).toBeTruthy();
+    expect(result).toMatch(/^[Cc]:/);
   });
 });

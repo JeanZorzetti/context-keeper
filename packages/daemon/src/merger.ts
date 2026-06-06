@@ -131,14 +131,38 @@ function findGitRoot(dir: string): string | null {
  * Claude Code stores transcripts at:
  *   ~/.claude/projects/<encoded-project-path>/<session-id>.jsonl
  *
- * The directory name is the URL-encoded absolute path of the project.
+ * The directory name is encoded differently on Unix vs Windows:
+ * - Unix/Linux/Mac: URL-encoded with %2F for path separators
+ * - Windows: dash-encoded with -- for path separators (e.g., c--users--project)
  */
 export function resolveProjectDir(transcriptPath: string): string | null {
-  // e.g. /home/user/.claude/projects/%2Fhome%2Fuser%2Fmyproject/abc.jsonl
   const parentDir = path.basename(path.dirname(transcriptPath));
+
+  // Try percent-decoding first (Unix/Linux format: %2F for separator)
   try {
-    return decodeURIComponent(parentDir);
+    const decoded = decodeURIComponent(parentDir);
+    // Check if it looks like a valid absolute path
+    if (decoded.startsWith('/') || decoded.match(/^[a-zA-Z]:/)) {
+      return decoded;
+    }
   } catch {
-    return null;
+    // Fall through to dash-decoding
   }
+
+  // Try dash-decoding for Windows (format: c--users--path--to--project)
+  if (parentDir.match(/^[a-z]--/)) {
+    try {
+      const parts = parentDir.split('--');
+      // First part is drive letter (e.g., 'c' → 'C:')
+      if (parts[0].length === 1) {
+        parts[0] = parts[0].toUpperCase() + ':';
+      }
+      // Reconstruct with appropriate separator for current platform
+      return parts.join(path.sep);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
