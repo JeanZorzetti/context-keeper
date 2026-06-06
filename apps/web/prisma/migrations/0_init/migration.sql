@@ -33,7 +33,7 @@ CREATE TABLE "Decision" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "text" TEXT NOT NULL,
-    "sessionId" TEXT NOT NULL,
+    "sessionId" TEXT,
     "capturedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Decision_pkey" PRIMARY KEY ("id")
