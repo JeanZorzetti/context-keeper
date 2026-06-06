@@ -42,7 +42,7 @@ export default function BillingClient({
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ priceId, planType: planKey }),
       });
 
       const data = await response.json();

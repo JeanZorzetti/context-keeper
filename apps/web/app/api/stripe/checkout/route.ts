@@ -47,8 +47,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // Get price ID from request
-    const { priceId } = await req.json();
+    // Get price ID and plan type from request
+    const { priceId, planType } = await req.json();
 
     if (!priceId) {
       return new Response(JSON.stringify({ error: "Missing priceId" }), {
@@ -56,10 +56,13 @@ export async function POST(req: Request) {
       });
     }
 
+    // Determine mode based on plan type
+    const mode = planType === "LIFETIME" ? "payment" : "subscription";
+
     // Create checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: "subscription",
+      mode,
       line_items: [
         {
           price: priceId,
