@@ -137,10 +137,9 @@ function findGitRoot(dir: string): string | null {
  *   Example: c--users-jeanz-onedrive-desktop-roi-labs-context-keeper
  *   Maps to: C:\Users\jeanz\OneDrive\Desktop\ROI Labs\context-keeper
  *
- * NOTE: Windows encoding is lossy (can't distinguish separators from spaces).
- * We extract a readable projectName via path.basename() by reconstructing a
- * candidate path and searching the filesystem. If filesystem lookup fails, we
- * return a fallback path with extracted projectName.
+ * NOTE: Windows encoding is lossy and cannot be reliably decoded without filesystem context.
+ * Strategy: Use filesystem walk + git root discovery to find the actual project directory,
+ * ensuring projectName (via path.basename) is always correct and readable.
  */
 export function resolveProjectDir(transcriptPath: string): string | null {
   const parentDir = path.basename(path.dirname(transcriptPath));
@@ -150,6 +149,7 @@ export function resolveProjectDir(transcriptPath: string): string | null {
     const decoded = decodeURIComponent(parentDir);
     // Check if it looks like a valid absolute path
     if (decoded.startsWith('/') || decoded.match(/^[a-zA-Z]:/)) {
+      // For Unix paths, return as-is (already decoded)
       return decoded;
     }
   } catch {
@@ -162,7 +162,8 @@ export function resolveProjectDir(transcriptPath: string): string | null {
       const driveLetter = parentDir[0].toUpperCase();
       const driveRoot = driveLetter + ':';
 
-      // Try to find the real directory by searching common roots
+      // Search for the real directory by walking from common roots
+      // This allows us to derive the correct projectName from the git root's basename
       const searchRoots = [
         path.join(driveRoot, 'Users'),
         path.join(driveRoot, 'Temp'),
@@ -172,18 +173,13 @@ export function resolveProjectDir(transcriptPath: string): string | null {
 
       for (const root of searchRoots) {
         if (fs.existsSync(root)) {
-          const found = findDirectoryByEncoding(root, parentDir, 0);
+          const found = findProjectRootByEncoding(root, parentDir, 0);
           if (found) return found;
         }
       }
 
-      // Fallback: extract readable projectName and construct a minimal path
-      // This ensures path.basename() in index-writer returns something readable
-      const projectName = extractProjectNameFromEncoding(parentDir);
-      if (projectName) {
-        return path.join(driveRoot, projectName);
-      }
-
+      // If filesystem search fails, return null (unable to resolve)
+      // Better to fail safely than return an unverified encoded path
       return null;
     } catch {
       return null;
@@ -194,15 +190,16 @@ export function resolveProjectDir(transcriptPath: string): string | null {
 }
 
 /**
- * Recursively searches for a directory that matches the encoded path pattern.
- * Limits recursion depth to avoid expensive filesystem traversal.
+ * Searches for a real directory that matches the encoded path pattern,
+ * then climbs to find its git root (project root).
+ * Returns the git root path, ensuring projectName via path.basename() is correct.
  */
-function findDirectoryByEncoding(
+function findProjectRootByEncoding(
   currentPath: string,
   encodedPath: string,
   depth: number,
 ): string | null {
-  if (depth > 5) return null; // Limit recursion depth
+  if (depth > 6) return null; // Limit recursion depth
 
   try {
     const entries = fs.readdirSync(currentPath, { withFileTypes: true });
@@ -211,17 +208,22 @@ function findDirectoryByEncoding(
       if (!entry.isDirectory()) continue;
 
       const normalizedName = entry.name.toLowerCase();
-      // Check if this entry name appears in the encoded path
-      if (encodedPath.includes(normalizedName.replace(/\s+/g, '-'))) {
+      const encodedName = normalizedName.replace(/\s+/g, '-');
+
+      // Check if this directory's encoded name appears in the transcript encoding
+      if (encodedPath.includes(encodedName)) {
         const fullPath = path.join(currentPath, entry.name);
 
-        // If we've reached a directory with .git, it's likely the project root
-        if (fs.existsSync(path.join(fullPath, '.git'))) {
-          return fullPath;
+        // Found a matching directory — now climb to its git root
+        const gitRoot = findGitRoot(fullPath);
+        if (gitRoot) {
+          // Verify this is a real project (has .git)
+          return gitRoot;
         }
 
-        // Recursively search subdirectories
-        const found = findDirectoryByEncoding(fullPath, encodedPath, depth + 1);
+        // If no git root found but we matched, continue searching deeper
+        // (might be an intermediate directory, not the project root)
+        const found = findProjectRootByEncoding(fullPath, encodedPath, depth + 1);
         if (found) return found;
       }
     }
@@ -230,31 +232,4 @@ function findDirectoryByEncoding(
   }
 
   return null;
-}
-
-/**
- * Extracts a readable project name from the Windows dash-encoded path.
- * Since encoding is lossy (single dashes = separators OR spaces), we use heuristics:
- * - Take the last 1-3 segments after splitting by `-`
- * - Prefer longer meaningful names over single-char segments
- */
-function extractProjectNameFromEncoding(encodedPath: string): string | null {
-  if (!encodedPath.match(/^[a-z]--/)) return null;
-
-  const rest = encodedPath.substring(3); // Skip 'X--'
-  const segments = rest.split('-').filter((s) => s.length > 0);
-
-  if (segments.length === 0) return null;
-
-  // Try to identify the project directory name by looking at the trailing segments
-  // Take the last segment(s) that form a reasonable name (prefer 2-3 segments if they're short)
-  for (let i = Math.min(3, segments.length); i >= 1; i--) {
-    const candidate = segments.slice(-i).join('-');
-    // Prefer if length > 2 (skip single letters or 2-letter acronyms in isolation)
-    if (candidate.length > 2 || i === 1) {
-      return candidate;
-    }
-  }
-
-  return segments[segments.length - 1] || null;
 }
