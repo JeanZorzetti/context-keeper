@@ -22,6 +22,9 @@ model User {
   email     String   @unique
   plan      Plan     @default(FREE)
   stripeId  String?
+  groqApiKey String?
+  autoCommit Boolean @default(true)
+  apiToken  String? @unique
   projects  Project[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
