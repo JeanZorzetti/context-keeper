@@ -24,6 +24,7 @@ model User {
   stripeId     String?
   groqApiKey   String?
   autoCommit   Boolean  @default(true)
+  apiToken     String?  @unique
   projects     Project[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
