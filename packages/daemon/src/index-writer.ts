@@ -13,6 +13,8 @@ export interface DecisionEntry {
   id: string;
   /** Absolute path to the project directory. */
   projectPath: string;
+  /** Human-readable project name (basename of projectPath). */
+  projectName: string;
   /** Basename of the source .jsonl file (session identifier). */
   sessionId: string;
   /** The decision text, max ~100 chars. */
@@ -23,9 +25,9 @@ export interface DecisionEntry {
 
 export interface DecisionIndex {
   /** Schema version — bump if shape changes to allow migrations. */
-  version: number;
+  version: 1;
   /** All captured decisions, sorted descending by capturedAt (newest first). */
-  entries: DecisionEntry[];
+  decisions: DecisionEntry[];
 }
 
 // ---------------------------------------------------------------------------
@@ -36,17 +38,17 @@ const SCHEMA_VERSION = 1;
 
 function readIndex(): DecisionIndex {
   if (!fs.existsSync(INDEX_PATH)) {
-    return { version: SCHEMA_VERSION, entries: [] };
+    return { version: 1, decisions: [] };
   }
   try {
     const raw = fs.readFileSync(INDEX_PATH, 'utf-8');
     const parsed = JSON.parse(raw) as DecisionIndex;
-    if (!parsed.version || !Array.isArray(parsed.entries)) {
-      return { version: SCHEMA_VERSION, entries: [] };
+    if (!parsed.version || !Array.isArray(parsed.decisions)) {
+      return { version: 1, decisions: [] };
     }
     return parsed;
   } catch {
-    return { version: SCHEMA_VERSION, entries: [] };
+    return { version: 1, decisions: [] };
   }
 }
 
@@ -74,10 +76,11 @@ export function appendToIndex(
 
   const index = readIndex();
   const capturedAt = new Date().toISOString();
+  const projectName = path.basename(projectPath);
 
   // Build a dedup key set for existing entries in this session
   const existingKeys = new Set(
-    index.entries
+    index.decisions
       .filter((e) => e.projectPath === projectPath && e.sessionId === sessionId)
       .map((e) => e.text),
   );
@@ -87,6 +90,7 @@ export function appendToIndex(
     .map((text) => ({
       id: generateId(),
       projectPath,
+      projectName,
       sessionId,
       text,
       capturedAt,
@@ -94,8 +98,8 @@ export function appendToIndex(
 
   if (newEntries.length === 0) return;
 
-  index.entries = [...newEntries, ...index.entries];
-  index.version = SCHEMA_VERSION;
+  index.decisions = [...newEntries, ...index.decisions];
+  index.version = 1;
   writeIndex(index);
 }
 

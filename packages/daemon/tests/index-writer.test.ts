@@ -56,10 +56,11 @@ describe('appendToIndex', () => {
     fs.mkdirSync(indexDir, { recursive: true });
     const index: DecisionIndex = {
       version: 1,
-      entries: [
+      decisions: [
         {
           id: 'abc123',
           projectPath: '/home/user/myproject',
+          projectName: 'myproject',
           sessionId: 'session.jsonl',
           text: 'chose Node.js over Go because team familiarity',
           capturedAt: new Date().toISOString(),
@@ -70,18 +71,20 @@ describe('appendToIndex', () => {
 
     const read = JSON.parse(fs.readFileSync(indexPath, 'utf-8')) as DecisionIndex;
     expect(read.version).toBe(1);
-    expect(read.entries).toHaveLength(1);
-    expect(read.entries[0].text).toBe('chose Node.js over Go because team familiarity');
-    expect(read.entries[0].projectPath).toBe('/home/user/myproject');
-    expect(read.entries[0].sessionId).toBe('session.jsonl');
-    expect(read.entries[0].capturedAt).toBeTruthy();
-    expect(read.entries[0].id).toBeTruthy();
+    expect(read.decisions).toHaveLength(1);
+    expect(read.decisions[0].text).toBe('chose Node.js over Go because team familiarity');
+    expect(read.decisions[0].projectPath).toBe('/home/user/myproject');
+    expect(read.decisions[0].projectName).toBe('myproject');
+    expect(read.decisions[0].sessionId).toBe('session.jsonl');
+    expect(read.decisions[0].capturedAt).toBeTruthy();
+    expect(read.decisions[0].id).toBeTruthy();
   });
 
   it('DecisionEntry shape has all required fields', () => {
     const entry = {
       id: 'test-id',
       projectPath: '/projects/foo',
+      projectName: 'foo',
       sessionId: 'abc.jsonl',
       text: 'decided to use Stripe because simplest checkout flow',
       capturedAt: '2026-06-06T10:00:00.000Z',
@@ -90,6 +93,7 @@ describe('appendToIndex', () => {
     // All required fields present
     expect(entry.id).toBeDefined();
     expect(entry.projectPath).toBeDefined();
+    expect(entry.projectName).toBeDefined();
     expect(entry.sessionId).toBeDefined();
     expect(entry.text).toBeDefined();
     expect(entry.capturedAt).toBeDefined();
@@ -99,10 +103,10 @@ describe('appendToIndex', () => {
     expect(new Date(entry.capturedAt).toISOString()).toBe(entry.capturedAt);
   });
 
-  it('DecisionIndex shape has version and entries array', () => {
-    const index: DecisionIndex = { version: 1, entries: [] };
+  it('DecisionIndex shape has version and decisions array', () => {
+    const index: DecisionIndex = { version: 1, decisions: [] };
     expect(index.version).toBe(1);
-    expect(Array.isArray(index.entries)).toBe(true);
+    expect(Array.isArray(index.decisions)).toBe(true);
   });
 });
 
@@ -140,12 +144,12 @@ describe('appendToIndex integration', () => {
 // Shape contract tests (pure type/logic, no I/O)
 // ---------------------------------------------------------------------------
 describe('DecisionEntry/DecisionIndex shape contract', () => {
-  it('entries sort newest-first by capturedAt', () => {
-    const entries = [
-      { id: '1', projectPath: '/p', sessionId: 's', text: 'older', capturedAt: '2026-01-01T00:00:00.000Z' },
-      { id: '2', projectPath: '/p', sessionId: 's', text: 'newer', capturedAt: '2026-06-01T00:00:00.000Z' },
+  it('decisions sort newest-first by capturedAt', () => {
+    const decisions = [
+      { id: '1', projectPath: '/p', projectName: 'p', sessionId: 's', text: 'older', capturedAt: '2026-01-01T00:00:00.000Z' },
+      { id: '2', projectPath: '/p', projectName: 'p', sessionId: 's', text: 'newer', capturedAt: '2026-06-01T00:00:00.000Z' },
     ];
-    const sorted = [...entries].sort(
+    const sorted = [...decisions].sort(
       (a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime(),
     );
     expect(sorted[0].text).toBe('newer');
@@ -153,7 +157,7 @@ describe('DecisionEntry/DecisionIndex shape contract', () => {
   });
 
   it('version field allows future schema migrations', () => {
-    const v1: DecisionIndex = { version: 1, entries: [] };
+    const v1: DecisionIndex = { version: 1, decisions: [] };
     expect(v1.version).toBe(1);
     // Future: version 2 might add a `tags` field — version field enables migration
   });
