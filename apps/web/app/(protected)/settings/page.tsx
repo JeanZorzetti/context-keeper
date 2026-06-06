@@ -1,0 +1,141 @@
+import { getSession } from "@auth0/nextjs-auth0";
+
+export default async function Settings() {
+  const session = await getSession();
+
+  return (
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
+        <p className="text-gray-600">Configure your Context Keeper preferences.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Settings Sections */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Groq API Configuration */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Groq API Configuration
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Configure your Groq API key to enable automatic decision extraction.
+            </p>
+
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Groq API Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="gsk_..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Get your API key from{" "}
+                  <a
+                    href="https://console.groq.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:underline"
+                  >
+                    console.groq.com
+                  </a>
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700"
+              >
+                Save API Key
+              </button>
+            </form>
+          </div>
+
+          {/* Auto-Commit Setting */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Daemon Settings
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Configure how the daemon handles context updates.
+            </p>
+
+            <div className="space-y-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 text-indigo-600 rounded"
+                  defaultChecked
+                />
+                <span className="ml-3 text-sm text-gray-700">
+                  Auto-commit context updates
+                </span>
+              </label>
+              <p className="text-xs text-gray-500">
+                When enabled, the daemon will automatically commit changes to CLAUDE.md
+                after extracting decisions. Otherwise, changes are saved but not committed.
+              </p>
+            </div>
+          </div>
+
+          {/* Account Settings */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Account
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <p className="mt-1 text-gray-600">{session?.user?.email}</p>
+              </div>
+
+              <div>
+                <a
+                  href="/api/auth/logout"
+                  className="text-sm text-red-600 hover:text-red-700"
+                >
+                  Sign Out
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar - Help */}
+        <div className="lg:col-span-1">
+          <div className="bg-indigo-50 rounded-lg p-6 sticky top-24">
+            <h3 className="font-semibold text-indigo-900 mb-4">Need Help?</h3>
+            <ul className="space-y-3 text-sm text-indigo-800">
+              <li>
+                <a href="#" className="hover:underline">
+                  → Installation Guide
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:underline">
+                  → API Documentation
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:underline">
+                  → Troubleshooting
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:underline">
+                  → Contact Support
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
