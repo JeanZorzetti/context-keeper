@@ -1,0 +1,28 @@
+{
+  "name": "context-keeper-mcp",
+  "version": "0.1.0",
+  "description": "Context Keeper MCP server — exposes captured context for agent boot injection",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "context-keeper-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
