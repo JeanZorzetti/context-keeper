@@ -160,7 +160,7 @@ export function resolveProjectDir(transcriptPath: string): string | null {
   if (parentDir.match(/^[a-z]--/)) {
     try {
       const driveLetter = parentDir[0].toUpperCase();
-      const driveRoot = driveLetter + ':';
+      const driveRoot = driveLetter + ':\\';
 
       // Search for the real directory by walking from common roots
       // This allows us to derive the correct projectName from the git root's basename
@@ -178,8 +178,14 @@ export function resolveProjectDir(transcriptPath: string): string | null {
         }
       }
 
-      // If filesystem search fails, return null (unable to resolve)
-      // Better to fail safely than return an unverified encoded path
+      // Fallback: extract readable projectName from encoding
+      // Returns a constructed path where path.basename() gives the extracted name
+      const projectName = extractProjectNameFromEncoding(parentDir);
+      if (projectName) {
+        return path.join(driveRoot, projectName);
+      }
+
+      // Last resort: unable to resolve
       return null;
     } catch {
       return null;
@@ -232,4 +238,35 @@ function findProjectRootByEncoding(
   }
 
   return null;
+}
+
+/**
+ * Extracts a readable project name from the Windows dash-encoded path.
+ * Since encoding is lossy (single dashes = separators OR spaces), uses heuristic:
+ * Prefers last 2 segments (typical project naming), falls back to last segment.
+ *
+ * Example: 'c--users-jeanz-onedrive-desktop-roi-labs-context-keeper'
+ *   → segments: ['c', 'users', 'jeanz', 'onedrive', 'desktop', 'roi', 'labs', 'context', 'keeper']
+ *   → returns: 'context-keeper' (last 2 segments)
+ *
+ * Example: 'c--users-my-project'
+ *   → segments: ['c', 'users', 'my', 'project']
+ *   → returns: 'my-project' (last 2 segments)
+ */
+function extractProjectNameFromEncoding(encodedPath: string): string | null {
+  if (!encodedPath.match(/^[a-z]--/)) return null;
+
+  const rest = encodedPath.substring(3); // Skip 'X--'
+  const segments = rest.split('-').filter((s) => s.length > 0);
+
+  if (segments.length === 0) return null;
+  if (segments.length === 1) return segments[0];
+
+  // Prefer last 2 segments (typical: 'context-keeper', 'my-project')
+  if (segments.length >= 2) {
+    return segments.slice(-2).join('-');
+  }
+
+  // Fallback: last segment only
+  return segments[segments.length - 1] || null;
 }

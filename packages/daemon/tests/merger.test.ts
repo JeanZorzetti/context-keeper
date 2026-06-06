@@ -165,47 +165,47 @@ describe('resolveProjectDir', () => {
     expect(result).toBeNull();
   });
 
-  it('handles Windows dash-encoded path (real format with single dashes)', () => {
-    // Real Windows encoding observed: c--users-jeanz-onedrive-desktop-roi-labs-context-keeper
-    // Single dashes replace BOTH path separators (\) AND spaces
-    // This is lossy: c--users-jeanz-onedrive-desktop-roi-labs-context-keeper could map to:
-    //   C:\Users\jeanz\OneDrive\Desktop\ROI Labs\context-keeper
-    //   C:\Users\jeanz-onedrive\Desktop\ROI Labs\context-keeper
-    //   etc. (ambiguous without filesystem)
+  it('extracts readable projectName from Windows dash-encoded path via fallback', () => {
+    // Real Windows encoding: c--users-jeanz-onedrive-desktop-roi-labs-context-keeper
+    // Single dashes replace BOTH path separators (\) AND spaces (lossy)
     //
-    // Strategy: If filesystem matching fails (as in tests), return null.
-    // In production with real filesystem, would find .git and return project root.
+    // When filesystem search fails (as in tests), fallback heuristic extracts projectName:
+    // Takes last 1-3 segments: 'context-keeper' (last 2 segments)
     const transcriptPath = 'C:\\Users\\user\\.claude\\projects\\c--users-jeanz-onedrive-desktop-roi-labs-context-keeper\\abc123.jsonl';
     const result = resolveProjectDir(transcriptPath);
 
-    // In test environment without matching directories, should return null
-    // (safe to fail rather than guess incorrect path)
-    expect(result).toBeNull();
+    // Must return a path, either from filesystem or via fallback
+    expect(result).toBeTruthy();
+    if (result) {
+      const projectName = path.basename(result);
+      // Key contract: projectName must be 'context-keeper'
+      expect(projectName).toBe('context-keeper');
+    }
   });
 
-  it('documents Windows dash-encoding behavior and limitations', () => {
-    // This test documents the known constraint: Windows encoding is lossy.
-    // resolveProjectDir relies on filesystem to disambiguate.
-    //
-    // Example ambiguity:
-    // - Encoded: c--users-roi-labs-context-keeper
-    // - Could be: C:\Users\roi\Labs\context-keeper
-    // - Could be: C:\Users\ROI Labs\context-keeper
-    // - Could be: C:\Users\roilabs\context-keeper
-    //
-    // Only filesystem walk + .git discovery can resolve reliably.
+  it('fallback extracts last segment for short encoded names', () => {
+    // Test fallback for short names like 'c--users-my-project'
+    const transcriptPath = 'C:\\mock\\.claude\\projects\\c--users-my-project\\session.jsonl';
+    const result = resolveProjectDir(transcriptPath);
 
-    const testCases = [
-      'c--users-project',
-      'c--users-my-project-name',
-      'c--temp-work-spaces-name',
-    ];
+    expect(result).toBeTruthy();
+    if (result) {
+      const projectName = path.basename(result);
+      // For 'c--users-my-project', should extract 'my-project' (last 2 segments)
+      // or 'project' (last segment) at minimum
+      expect(projectName).toMatch(/^(my-project|project)$/);
+    }
+  });
 
-    // All should return null in test (no real filesystem match)
-    testCases.forEach((encoded) => {
-      const path = `C:\\mock\\.claude\\projects\\${encoded}\\session.jsonl`;
-      const result = resolveProjectDir(path);
-      expect(result).toBeNull();
-    });
+  it('handles edge case: single-segment encoded name', () => {
+    // Test edge case: c--project (minimal valid encoding)
+    const transcriptPath = 'C:\\tmp\\.claude\\projects\\c--project\\session.jsonl';
+    const result = resolveProjectDir(transcriptPath);
+
+    expect(result).toBeTruthy();
+    if (result) {
+      const projectName = path.basename(result);
+      expect(projectName).toBe('project');
+    }
   });
 });
