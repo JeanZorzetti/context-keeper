@@ -3,12 +3,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy web app and dependencies
-COPY apps/web ./apps/web
-COPY package.json package-lock.json ./
+# Copy lock file and package files from root and apps/web
+COPY package-lock.json ./
+COPY apps/web/package.json ./apps/web/package.json
 
-# Install dependencies
+# Install dependencies for the entire monorepo (root lock file includes all deps)
 RUN npm ci
+
+# Copy the rest of the web app
+COPY apps/web ./apps/web
+COPY apps/web/prisma ./apps/web/prisma
 
 # Build the application
 WORKDIR /app/apps/web
