@@ -1,21 +1,15 @@
 # Stage 1: Build
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/apps/web
 
-# Copy lock file and package files from root and apps/web
-COPY package-lock.json ./
-COPY apps/web/package.json ./apps/web/package.json
+# Copy web app
+COPY apps/web ./
 
-# Install dependencies for the entire monorepo (root lock file includes all deps)
-RUN npm ci
-
-# Copy the rest of the web app
-COPY apps/web ./apps/web
-COPY apps/web/prisma ./apps/web/prisma
+# Install dependencies
+RUN npm install
 
 # Build the application
-WORKDIR /app/apps/web
 RUN npm run build
 
 # Generate Prisma client
