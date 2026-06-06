@@ -42,16 +42,35 @@ export async function POST(req: Request) {
           where: { auth0Id },
         });
 
-        if (user) {
-          if (!user.stripeId) {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { stripeId: customerId },
-            });
-            console.log(`Linked user ${user.id} to Stripe customer ${customerId}`);
-          }
-        } else {
+        if (!user) {
           console.warn(`User not found for auth0Id ${auth0Id}`);
+          break;
+        }
+
+        const updateData: any = {};
+        if (!user.stripeId) {
+          updateData.stripeId = customerId;
+        }
+
+        // For one-time payments (LIFETIME), update plan here
+        // since no subscription event will follow
+        if (checkoutSession.mode === "payment") {
+          // Retrieve line items to get the priceId
+          const lineItems = await stripe.checkout.sessions.listLineItems(
+            checkoutSession.id
+          );
+          const priceId = lineItems.data[0]?.price?.id;
+          if (priceId === process.env.STRIPE_PRICE_LIFETIME) {
+            updateData.plan = "LIFETIME";
+          }
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: updateData,
+          });
+          console.log(`Updated user ${user.id} with data`, updateData);
         }
         break;
       }
