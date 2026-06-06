@@ -133,7 +133,14 @@ function findGitRoot(dir: string): string | null {
  *
  * The directory name is encoded differently on Unix vs Windows:
  * - Unix/Linux/Mac: URL-encoded with %2F for path separators
- * - Windows: dash-encoded with -- for path separators (e.g., c--users--project)
+ * - Windows: dash-encoded, where single dashes replace both path separators (\) AND spaces
+ *   Example: c--users-jeanz-onedrive-desktop-roi-labs-context-keeper
+ *   Maps to: C:\Users\jeanz\OneDrive\Desktop\ROI Labs\context-keeper
+ *
+ * NOTE: Windows encoding is lossy (can't distinguish separators from spaces).
+ * We extract a readable projectName via path.basename() by reconstructing a
+ * candidate path and searching the filesystem. If filesystem lookup fails, we
+ * return a fallback path with extracted projectName.
  */
 export function resolveProjectDir(transcriptPath: string): string | null {
   const parentDir = path.basename(path.dirname(transcriptPath));
@@ -149,20 +156,105 @@ export function resolveProjectDir(transcriptPath: string): string | null {
     // Fall through to dash-decoding
   }
 
-  // Try dash-decoding for Windows (format: c--users--path--to--project)
+  // Try dash-decoding for Windows (lossy format: c--users-path-with-spaces-encoding)
   if (parentDir.match(/^[a-z]--/)) {
     try {
-      const parts = parentDir.split('--');
-      // First part is drive letter (e.g., 'c' → 'C:')
-      if (parts[0].length === 1) {
-        parts[0] = parts[0].toUpperCase() + ':';
+      const driveLetter = parentDir[0].toUpperCase();
+      const driveRoot = driveLetter + ':';
+
+      // Try to find the real directory by searching common roots
+      const searchRoots = [
+        path.join(driveRoot, 'Users'),
+        path.join(driveRoot, 'Temp'),
+        path.join(driveRoot, 'Dev'),
+        driveRoot,
+      ];
+
+      for (const root of searchRoots) {
+        if (fs.existsSync(root)) {
+          const found = findDirectoryByEncoding(root, parentDir, 0);
+          if (found) return found;
+        }
       }
-      // Reconstruct with appropriate separator for current platform
-      return parts.join(path.sep);
+
+      // Fallback: extract readable projectName and construct a minimal path
+      // This ensures path.basename() in index-writer returns something readable
+      const projectName = extractProjectNameFromEncoding(parentDir);
+      if (projectName) {
+        return path.join(driveRoot, projectName);
+      }
+
+      return null;
     } catch {
       return null;
     }
   }
 
   return null;
+}
+
+/**
+ * Recursively searches for a directory that matches the encoded path pattern.
+ * Limits recursion depth to avoid expensive filesystem traversal.
+ */
+function findDirectoryByEncoding(
+  currentPath: string,
+  encodedPath: string,
+  depth: number,
+): string | null {
+  if (depth > 5) return null; // Limit recursion depth
+
+  try {
+    const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const normalizedName = entry.name.toLowerCase();
+      // Check if this entry name appears in the encoded path
+      if (encodedPath.includes(normalizedName.replace(/\s+/g, '-'))) {
+        const fullPath = path.join(currentPath, entry.name);
+
+        // If we've reached a directory with .git, it's likely the project root
+        if (fs.existsSync(path.join(fullPath, '.git'))) {
+          return fullPath;
+        }
+
+        // Recursively search subdirectories
+        const found = findDirectoryByEncoding(fullPath, encodedPath, depth + 1);
+        if (found) return found;
+      }
+    }
+  } catch {
+    // Skip on permission errors or other I/O issues
+  }
+
+  return null;
+}
+
+/**
+ * Extracts a readable project name from the Windows dash-encoded path.
+ * Since encoding is lossy (single dashes = separators OR spaces), we use heuristics:
+ * - Take the last 1-3 segments after splitting by `-`
+ * - Prefer longer meaningful names over single-char segments
+ */
+function extractProjectNameFromEncoding(encodedPath: string): string | null {
+  if (!encodedPath.match(/^[a-z]--/)) return null;
+
+  const rest = encodedPath.substring(3); // Skip 'X--'
+  const segments = rest.split('-').filter((s) => s.length > 0);
+
+  if (segments.length === 0) return null;
+
+  // Try to identify the project directory name by looking at the trailing segments
+  // Take the last segment(s) that form a reasonable name (prefer 2-3 segments if they're short)
+  for (let i = Math.min(3, segments.length); i >= 1; i--) {
+    const candidate = segments.slice(-i).join('-');
+    // Prefer if length > 2 (skip single letters or 2-letter acronyms in isolation)
+    if (candidate.length > 2 || i === 1) {
+      return candidate;
+    }
+  }
+
+  return segments[segments.length - 1] || null;
 }
