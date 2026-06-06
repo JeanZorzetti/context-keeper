@@ -9,11 +9,11 @@ COPY apps/web ./
 # Install dependencies
 RUN npm install
 
+# Generate Prisma client (required before TypeScript build)
+RUN npx prisma generate
+
 # Build the application
 RUN npm run build
-
-# Generate Prisma client
-RUN npx prisma generate
 
 # Stage 2: Runtime
 FROM node:20-alpine
