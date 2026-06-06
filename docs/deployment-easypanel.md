@@ -30,9 +30,16 @@ Before deploying, set these environment variables in EasyPanel:
 - `STRIPE_SECRET_KEY` - From Stripe Dashboard (Secret key)
 - `STRIPE_WEBHOOK_SECRET` - Webhook signing secret (from webhook configuration)
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Publishable key (safe for frontend)
-- `STRIPE_PRICE_PERSONAL` - Stripe price ID for Personal plan ($19/mo)
-- `STRIPE_PRICE_PRO` - Stripe price ID for Pro plan ($49/mo)
-- `STRIPE_PRICE_LIFETIME` - Stripe price ID for Lifetime ($149 one-time)
+- `STRIPE_PRICE_PERSONAL` - Stripe price ID for Personal plan ($19/mo) - used by webhook
+- `STRIPE_PRICE_PRO` - Stripe price ID for Pro plan ($49/mo) - used by webhook
+- `STRIPE_PRICE_LIFETIME` - Stripe price ID for Lifetime ($149 one-time) - used by webhook
+- `NEXT_PUBLIC_STRIPE_PRICE_PERSONAL` - Stripe price ID for Personal plan ($19/mo) - used by frontend
+- `NEXT_PUBLIC_STRIPE_PRICE_PRO` - Stripe price ID for Pro plan ($49/mo) - used by frontend
+- `NEXT_PUBLIC_STRIPE_PRICE_LIFETIME` - Stripe price ID for Lifetime ($149 one-time) - used by frontend
+
+### Daemon Integration
+
+- `CONTEXT_KEEPER_TOKEN` - Secret token for daemon authentication when sending decisions to the API
 
 ### Optional
 
@@ -68,37 +75,24 @@ Before deploying, set these environment variables in EasyPanel:
 
 ### 3. Deploy to EasyPanel
 
-Option A: Using EasyPanel GitHub Integration
+Using EasyPanel Docker Integration (Recommended)
 
-1. Fork repository to your GitHub account
-2. In EasyPanel: Create new project → Connect GitHub
-3. Select repository and `feat/web-billing` branch
-4. Configure build command: `pnpm install && pnpm build`
-5. Configure start command: `pnpm start`
-6. Set all environment variables
-7. Deploy
+1. In EasyPanel: Create new service → Connect GitHub
+2. Select repository: `JeanZorzetti/context-keeper`
+3. Select branch: `feat/web-billing`
+4. Configure Docker:
+   - Dockerfile path: `apps/web/Dockerfile`
+   - Build context: repository root
+5. Set all environment variables (see Environment Variables section above)
+6. Deploy
 
-Option B: Using Docker
+The Dockerfile will:
+- Install dependencies using `npm ci` (reproducible builds)
+- Build Next.js application
+- Generate Prisma client
+- On container start: automatically run `prisma migrate deploy` and start the server
 
-```bash
-# Build Docker image
-docker build -t context-keeper:latest -f apps/web/Dockerfile .
-
-# Push to EasyPanel registry
-docker tag context-keeper:latest easypanel.io/your-org/context-keeper:latest
-docker push easypanel.io/your-org/context-keeper:latest
-
-# Deploy in EasyPanel interface
-```
-
-### 4. Database Migration
-
-After deployment, run migrations:
-
-```bash
-# Via EasyPanel terminal or SSH
-pnpm db:migrate
-```
+No manual database migration step is needed — it runs automatically on each deployment.
 
 ### 5. Test Deployment
 
@@ -152,9 +146,10 @@ EasyPanel PostgreSQL provides automatic backups. Configure:
 
 ### Build Failures
 
-- Check pnpm version: `pnpm --version` (should be latest)
-- Verify all dependencies install: `pnpm install`
-- Check TypeScript compilation: `pnpm build`
+- Check Docker build logs in EasyPanel dashboard
+- Verify `package.json` and `package-lock.json` are in the repo root
+- Verify app-specific files exist: `apps/web/package.json`, `apps/web/Dockerfile`, `apps/web/tsconfig.json`
+- Check for TypeScript compilation errors in build logs
 
 ## Rollback
 
@@ -174,13 +169,11 @@ To deploy updates:
 3. Or manually trigger deployment in EasyPanel dashboard
 
 For database schema changes:
-```bash
-# Create migration
-pnpm db:migrate --name feature_name
-
-# Deploy
-# (migrations run automatically on container start)
-```
+1. Modify Prisma schema (`apps/web/prisma/schema.prisma`)
+2. Create migration locally: `npx prisma migrate dev --name feature_name`
+3. Commit migration files to git
+4. Push to `feat/web-billing` branch
+5. EasyPanel auto-deploys, migrations run automatically on container start
 
 ## Performance Optimization
 
