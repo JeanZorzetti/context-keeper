@@ -7,7 +7,7 @@ WORKDIR /app/apps/web
 COPY apps/web ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
 # Generate Prisma client (required before TypeScript build)
 RUN npx prisma generate
@@ -22,7 +22,6 @@ WORKDIR /app
 
 # Copy necessary files from builder
 COPY --from=builder /app/apps/web/.next ./.next
-COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/node_modules ./node_modules
 COPY --from=builder /app/apps/web/package.json ./package.json
 COPY --from=builder /app/apps/web/prisma ./prisma
