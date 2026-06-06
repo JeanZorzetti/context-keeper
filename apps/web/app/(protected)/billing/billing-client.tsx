@@ -20,6 +20,11 @@ export default function BillingClient({
   const searchParams = useSearchParams();
   const successParam = searchParams.get("success");
   const [loading, setLoading] = useState<string | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const handleUpgrade = async (planKey: string) => {
     if (currentPlan === planKey) return;
@@ -63,6 +68,45 @@ export default function BillingClient({
     }
   };
 
+  const handleCancelSubscription = async () => {
+    if (!window.confirm("Are you sure you want to cancel your subscription? You will retain access until the end of your billing period.")) {
+      return;
+    }
+
+    setCancelLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/stripe/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage({
+          type: "error",
+          text: data.error || "Failed to cancel subscription",
+        });
+        return;
+      }
+
+      setMessage({
+        type: "success",
+        text: `Subscription will be canceled on ${new Date(data.subscription.currentPeriodEnd).toLocaleDateString()}. You retain access until then.`,
+      });
+    } catch (error) {
+      console.error("Cancel error:", error);
+      setMessage({
+        type: "error",
+        text: "Failed to cancel subscription",
+      });
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   const currentPlanDetails = planDetails[currentPlan as keyof typeof planDetails];
 
   return (
@@ -101,12 +145,24 @@ export default function BillingClient({
             </ul>
           </div>
           {currentPlan !== "FREE" && (
-            <div className="text-right">
+            <div className="text-right space-y-3">
+              {message && (
+                <div
+                  className={`p-3 rounded text-sm ${
+                    message.type === "success"
+                      ? "bg-green-50 text-green-800 border border-green-200"
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}
+                >
+                  {message.type === "success" ? "✓" : "✕"} {message.text}
+                </div>
+              )}
               <button
-                className="px-4 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50 text-sm font-medium"
-                disabled
+                onClick={handleCancelSubscription}
+                disabled={cancelLoading}
+                className="px-4 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel Subscription
+                {cancelLoading ? "Canceling..." : "Cancel Subscription"}
               </button>
             </div>
           )}
