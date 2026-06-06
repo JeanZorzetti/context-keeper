@@ -33,4 +33,4 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Run migrations and start server
-CMD ["sh", "-c", "cd /app/apps/web && npx prisma migrate deploy && node node_modules/.bin/next start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
