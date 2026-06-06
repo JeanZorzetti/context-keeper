@@ -1,0 +1,29 @@
+{
+  "name": "context-keeper-daemon",
+  "version": "0.1.0",
+  "description": "Context Keeper daemon — watches Claude Code transcripts, extracts decisions via Groq, updates CLAUDE.md",
+  "main": "dist/index.js",
+  "bin": {
+    "context-keeper": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "groq-sdk": "^0.7.0",
+    "dotenv": "^16.4.5",
+    "simple-git": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

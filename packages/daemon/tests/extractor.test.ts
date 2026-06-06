@@ -1,0 +1,175 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+// ---------------------------------------------------------------------------
+// Groq SDK mock — hoisted so the factory closure can reference mockCreate
+// ---------------------------------------------------------------------------
+const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
+
+vi.mock('groq-sdk', () => ({
+  default: class MockGroq {
+    chat = {
+      completions: { create: mockCreate },
+    };
+  },
+}));
+
+// Import after mocks are registered
+import { readTranscript, formatTranscript, extractDecisions } from '../src/extractor.js';
+
+// ---------------------------------------------------------------------------
+// readTranscript
+// ---------------------------------------------------------------------------
+describe('readTranscript', () => {
+  let tmpDir: string;
+  let tmpFile: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-test-'));
+    tmpFile = path.join(tmpDir, 'session.jsonl');
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('parses messages with top-level role field', () => {
+    fs.writeFileSync(
+      tmpFile,
+      [
+        JSON.stringify({ role: 'user', content: 'Hello' }),
+        JSON.stringify({ role: 'assistant', content: 'Hi there' }),
+      ].join('\n'),
+    );
+    const msgs = readTranscript(tmpFile);
+    expect(msgs).toHaveLength(2);
+    expect(msgs[0].role).toBe('user');
+    expect(msgs[1].role).toBe('assistant');
+  });
+
+  it('parses messages wrapped in a top-level object with message key', () => {
+    fs.writeFileSync(
+      tmpFile,
+      JSON.stringify({ message: { role: 'user', content: 'wrapped' } }),
+    );
+    const msgs = readTranscript(tmpFile);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].role).toBe('user');
+    expect(msgs[0].content).toBe('wrapped');
+  });
+
+  it('skips empty lines and malformed JSON', () => {
+    fs.writeFileSync(tmpFile, '\n{bad json}\n' + JSON.stringify({ role: 'user', content: 'ok' }));
+    const msgs = readTranscript(tmpFile);
+    expect(msgs).toHaveLength(1);
+  });
+
+  it('returns empty array for empty file', () => {
+    fs.writeFileSync(tmpFile, '');
+    expect(readTranscript(tmpFile)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatTranscript
+// ---------------------------------------------------------------------------
+describe('formatTranscript', () => {
+  it('formats string content messages', () => {
+    const msgs = [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi' },
+    ];
+    const result = formatTranscript(msgs);
+    expect(result).toContain('[user]: Hello');
+    expect(result).toContain('[assistant]: Hi');
+  });
+
+  it('concatenates text blocks from array content', () => {
+    const msgs = [
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'Part one.' },
+          { type: 'tool_use', text: undefined },
+          { type: 'text', text: 'Part two.' },
+        ],
+      },
+    ];
+    const result = formatTranscript(msgs);
+    expect(result).toContain('Part one.');
+    expect(result).toContain('Part two.');
+  });
+
+  it('truncates long transcripts with sliding window', () => {
+    const bigContent = 'x'.repeat(40000);
+    const msgs = [{ role: 'user', content: bigContent }];
+    const result = formatTranscript(msgs);
+    // MAX_CHARS = 8000 * 4 = 32000; result should be ≤ that plus prefix
+    expect(result.length).toBeLessThanOrEqual(32000 + 200);
+    expect(result).toContain('(truncated)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractDecisions (mocked Groq)
+// ---------------------------------------------------------------------------
+describe('extractDecisions', () => {
+  beforeEach(() => {
+    process.env.GROQ_API_KEY = 'test-key';
+    mockCreate.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('parses a JSON array returned by Groq', async () => {
+    const decisions = [
+      'chose Prisma over Drizzle because team familiarity',
+      'decided to use Auth0 because SSO requirement',
+    ];
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(decisions) } }],
+    });
+
+    const result = await extractDecisions('some transcript');
+    expect(result).toEqual(decisions);
+  });
+
+  it('returns empty array when Groq returns malformed JSON', async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: 'not json at all' } }],
+    });
+
+    const result = await extractDecisions('transcript');
+    expect(result).toEqual([]);
+  });
+
+  it('strips markdown code fences from Groq response', async () => {
+    const decisions = ['decided to use Node.js because vibe coders already have it'];
+    mockCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: `\`\`\`json\n${JSON.stringify(decisions)}\n\`\`\``,
+          },
+        },
+      ],
+    });
+
+    const result = await extractDecisions('transcript');
+    expect(result).toEqual(decisions);
+  });
+
+  it('caps results at 10 decisions', async () => {
+    const decisions = Array.from({ length: 15 }, (_, i) => `decision ${i + 1}`);
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(decisions) } }],
+    });
+
+    const result = await extractDecisions('transcript');
+    expect(result).toHaveLength(10);
+  });
+});
