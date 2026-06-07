@@ -33,7 +33,7 @@ WORKDIR /app
 
 # Standalone output already bundles traced runtime deps — no full node_modules needed
 COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./.next/static
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/prisma ./prisma
 COPY --from=builder /app/apps/web/prisma.config.ts ./
 
@@ -44,6 +44,7 @@ EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
 
 # Migrate then start via standalone server (no next start / no full node_modules)
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node apps/web/server.js"]
