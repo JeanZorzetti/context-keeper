@@ -1,16 +1,24 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not defined");
-}
+let stripeClient: Stripe | null = null;
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
-});
+export function getStripe(): Stripe {
+  if (!stripeClient) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+      throw new Error("STRIPE_SECRET_KEY is not defined");
+    }
+    stripeClient = new Stripe(apiKey, {
+      apiVersion: "2025-02-24.acacia",
+    });
+  }
+  return stripeClient;
+}
 
 export const getStripeCheckoutSessionUrl = async (
   stripeSessionId: string
 ): Promise<string | null> => {
+  const stripe = getStripe();
   const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
   return session.url;
 };
@@ -21,6 +29,7 @@ export const createCheckoutSession = async (
   successUrl: string,
   cancelUrl: string
 ) => {
+  const stripe = getStripe();
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     payment_method_types: ["card"],

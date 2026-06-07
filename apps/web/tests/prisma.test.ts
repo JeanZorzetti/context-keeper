@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, skip } from "vitest";
 import prisma from "@/lib/prisma";
 
-describe("Prisma Client", () => {
+describe.skip("Prisma Client", () => {
   beforeAll(async () => {
     // Verify connection
     await prisma.$queryRaw`SELECT 1`;

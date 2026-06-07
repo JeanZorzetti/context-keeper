@@ -1,5 +1,5 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     let customerId = user.stripeId;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: user.email,
         metadata: {
           auth0Id: user.auth0Id,
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     const mode = planType === "LIFETIME" ? "payment" : "subscription";
 
     // Create checkout session
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const checkoutSession = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode,
       line_items: [

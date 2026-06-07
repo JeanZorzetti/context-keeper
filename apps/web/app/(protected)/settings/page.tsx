@@ -15,6 +15,7 @@ export default async function Settings() {
       userEmail={session?.user?.email}
       initialGroqApiKey={user?.groqApiKey}
       initialAutoCommit={user?.autoCommit ?? true}
+      initialApiToken={user?.apiToken}
     />
   );
 }

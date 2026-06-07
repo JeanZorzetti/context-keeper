@@ -6,16 +6,20 @@ interface SettingsClientProps {
   userEmail?: string;
   initialGroqApiKey?: string | null;
   initialAutoCommit?: boolean;
+  initialApiToken?: string | null;
 }
 
 export default function SettingsClient({
   userEmail,
   initialGroqApiKey,
   initialAutoCommit = true,
+  initialApiToken,
 }: SettingsClientProps) {
   const [groqApiKey, setGroqApiKey] = useState(initialGroqApiKey || "");
   const [autoCommit, setAutoCommit] = useState(initialAutoCommit);
+  const [apiToken, setApiToken] = useState(initialApiToken || "");
   const [loading, setLoading] = useState(false);
+  const [tokenLoading, setTokenLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -58,6 +62,52 @@ export default function SettingsClient({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateToken = async () => {
+    setTokenLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/user/api-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage({
+          type: "error",
+          text: data.error || "Failed to generate API token",
+        });
+        return;
+      }
+
+      setApiToken(data.apiToken);
+      setMessage({
+        type: "success",
+        text: "API token generated successfully",
+      });
+    } catch (error) {
+      console.error("Token generation error:", error);
+      setMessage({
+        type: "error",
+        text: "Failed to generate API token",
+      });
+    } finally {
+      setTokenLoading(false);
+    }
+  };
+
+  const handleCopyToken = () => {
+    if (apiToken) {
+      navigator.clipboard.writeText(apiToken);
+      setMessage({
+        type: "success",
+        text: "Token copied to clipboard",
+      });
     }
   };
 
@@ -173,6 +223,66 @@ export default function SettingsClient({
                 {loading ? "Saving..." : "Save Settings"}
               </button>
             </form>
+          </div>
+
+          {/* Daemon Integration */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Daemon Integration
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Generate an API token to authenticate your daemon with Context Keeper.
+            </p>
+
+            <div className="space-y-4">
+              <button
+                onClick={handleGenerateToken}
+                disabled={tokenLoading}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {tokenLoading ? "Generating..." : "Generate API Token"}
+              </button>
+
+              {apiToken && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Your API Token
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={apiToken}
+                      readOnly
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono text-gray-600 bg-gray-50"
+                    />
+                    <button
+                      onClick={handleCopyToken}
+                      className="px-3 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Add to your daemon's <code className="bg-gray-100 px-1 rounded">.env</code> file:
+                  </p>
+                  <code className="block bg-gray-50 border border-gray-200 rounded p-2 mt-2 text-xs text-gray-700 overflow-x-auto">
+                    CONTEXT_KEEPER_TOKEN={apiToken}
+                  </code>
+                </div>
+              )}
+
+              {message && (
+                <div
+                  className={`p-3 rounded text-sm ${
+                    message.type === "success"
+                      ? "bg-green-50 text-green-800 border border-green-200"
+                      : "bg-red-50 text-red-800 border border-red-200"
+                  }`}
+                >
+                  {message.type === "success" ? "✓" : "✕"} {message.text}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Account Settings */}
