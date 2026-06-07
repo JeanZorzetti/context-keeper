@@ -13,6 +13,7 @@ RUN npm ci
 RUN npx prisma generate
 
 # Build the application
+ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 2: Runtime
