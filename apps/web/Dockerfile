@@ -35,6 +35,7 @@ WORKDIR /app
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./.next/static
 COPY --from=builder /app/apps/web/prisma ./prisma
+COPY --from=builder /app/apps/web/prisma.config.ts ./
 
 # Install prisma CLI for `migrate deploy` at startup; done here (build time) not in CMD
 RUN npm install prisma --no-save
