@@ -1,11 +1,12 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import prisma from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { Project, Decision } from "@prisma/client";
 import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
+  const prisma = getPrisma();
   const session = await getSession();
 
   if (!session?.user?.sub) {

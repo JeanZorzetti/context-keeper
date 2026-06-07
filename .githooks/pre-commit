@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#
+# Build gate — impede commit que toca apps/web ou o Dockerfile sem o build
+# Docker passar localmente. Esta é a trava que faltava no loop dos ~20 deploys
+# vermelhos (ver docs/agents/POSTMORTEM-deploy-loop.md). O deploy do EasyPanel
+# NÃO é o loop de compilação — este hook é.
+#
+# Agnóstico de app: roda em QUALQUER commit (Claude Code, Agent Teams AI, git CLI).
+# Ativado por: git config core.hooksPath .githooks  (ver scripts/setup-hooks.* )
+#
+set -euo pipefail
+
+# ── Só age quando o commit toca código do web app ou o Dockerfile ────────────
+if ! git diff --cached --name-only | grep -qE '^apps/web/|Dockerfile'; then
+  exit 0
+fi
+
+# ── Garante o docker no PATH (Git-Bash no Windows pode herdar PATH antigo) ────
+if ! command -v docker >/dev/null 2>&1; then
+  for p in \
+    "/c/Program Files/Docker/Docker/resources/bin" \
+    "/mnt/c/Program Files/Docker/Docker/resources/bin"; do
+    [ -d "$p" ] && PATH="$p:$PATH"
+  done
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "❌ build gate: 'docker' não encontrado no PATH." >&2
+  echo "   Docker Desktop precisa estar instalado E o terminal/app reiniciado" >&2
+  echo "   após a instalação para herdar o PATH. Commit bloqueado." >&2
+  exit 1
+fi
+
+# ── Docker daemon está de pé? ────────────────────────────────────────────────
+if ! docker info >/dev/null 2>&1; then
+  echo "❌ build gate: Docker está instalado mas o daemon não responde." >&2
+  echo "   Abra o Docker Desktop e espere ficar 'running'. Commit bloqueado." >&2
+  exit 1
+fi
+
+# ── O gate: reproduz o build do EasyPanel localmente ─────────────────────────
+echo "🔒 build gate: rodando 'docker compose build web' antes do commit…" >&2
+log="$(mktemp)"
+if ! docker compose build web >"$log" 2>&1; then
+  echo "" >&2
+  echo "❌ BUILD FALHOU — commit bloqueado. Conserte e tente de novo." >&2
+  echo "   (o deploy do EasyPanel falharia exatamente igual)" >&2
+  echo "── primeiras 40 linhas do erro ──────────────────────────────" >&2
+  head -40 "$log" >&2
+  echo "── log completo: $log ───────────────────────────────────────" >&2
+  exit 1
+fi
+rm -f "$log"
+echo "✅ build verde — commit liberado." >&2
+exit 0

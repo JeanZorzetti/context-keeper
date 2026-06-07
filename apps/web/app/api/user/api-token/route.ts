@@ -1,9 +1,10 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import prisma from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
 
 export async function POST(req: Request) {
   try {
+    const prisma = getPrisma();
     const session = await getSession();
 
     if (!session?.user?.sub) {

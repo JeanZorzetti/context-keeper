@@ -1,10 +1,11 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import prisma from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import SettingsClient from "./settings-client";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Settings() {
+  const prisma = getPrisma();
   const session = await getSession();
 
   // Get user settings from database

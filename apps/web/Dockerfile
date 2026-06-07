@@ -19,7 +19,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/web ./apps/web
 
 # Generate Prisma client (required before TypeScript build)
-RUN pnpm --filter web exec prisma generate
+# DATABASE_URL is required by prisma.config.ts env() even for generate; use a dummy for build time
+RUN cd apps/web && DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy pnpm exec prisma generate
 
 # Build the application
 ENV NODE_ENV=production
