@@ -46,12 +46,12 @@ export default async function ProtectedLayout({
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">{session.user?.email}</span>
-              <Link
+              <a
                 href="/api/auth/logout"
                 className="text-sm text-gray-700 hover:text-indigo-600"
               >
                 Sign Out
-              </Link>
+              </a>
             </div>
           </div>
         </div>

@@ -12,13 +12,18 @@ export default async function Billing() {
     return <div>Error loading user</div>;
   }
 
-  // Get user
-  const user = await prisma.user.findUnique({
+  // Get or create user
+  let user = await prisma.user.findUnique({
     where: { auth0Id: session.user.sub },
   });
 
   if (!user) {
-    return <div>Error loading user</div>;
+    user = await prisma.user.create({
+      data: {
+        auth0Id: session.user.sub,
+        email: session.user.email || "",
+      },
+    });
   }
 
   const planDetails = {
