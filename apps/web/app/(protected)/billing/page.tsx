@@ -2,6 +2,8 @@ import { getSession } from "@auth0/nextjs-auth0";
 import prisma from "@/lib/prisma";
 import BillingClient from "./billing-client";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Billing() {
   const session = await getSession();
 
