@@ -2,44 +2,44 @@ export const dynamic = 'force-dynamic';
 
 const issues = [
   {
-    title: '"Error loading user" no Dashboard ou Billing',
+    title: '"Error loading user" on Dashboard or Billing',
     solution:
-      'Acesse a página /dashboard primeiro. O sistema cria seu perfil automaticamente na primeira visita. Se o problema persistir, saia e faça login novamente.',
+      'Visit /dashboard first. The system creates your profile automatically on first visit. If the problem persists, sign out and log in again.',
   },
   {
-    title: 'Chave Groq inválida ou "API key not valid"',
+    title: 'Invalid Groq key or "API key not valid"',
     solution:
-      'Verifique se a chave em Configurações começa com "gsk_". Acesse console.groq.com, confirme que a chave está ativa e gere uma nova se necessário.',
+      'Check that the key in Settings starts with "gsk_". Go to console.groq.com, confirm the key is active, and generate a new one if needed.',
   },
   {
-    title: 'Daemon não inicia / "command not found"',
+    title: 'Daemon does not start / "command not found"',
     solution:
-      'Certifique-se de ter Node.js 18+ instalado. Execute: node --version. Tente npx --yes @jeanzorzetti/context-keeper start para forçar o download.',
+      'Make sure Node.js 18+ is installed. Run: node --version. Try npx --yes @jeanzorzetti/context-keeper start to force a fresh download.',
   },
   {
-    title: 'Daemon inicia mas não captura decisões',
+    title: 'Daemon starts but does not capture decisions',
     solution:
-      'Verifique se o Claude Code está gerando transcrições no diretório padrão. Confirme que a chave Groq está configurada em Configurações e está ativa.',
+      'Check that Claude Code is generating transcripts in the default directory. Confirm your Groq key is configured in Settings and is active.',
   },
   {
-    title: 'Login não funciona / loop de redirecionamento',
+    title: 'Login not working / redirect loop',
     solution:
-      'Limpe os cookies do navegador para context.nimblabs.com. Se usar bloqueador de anúncios, permita cookies de auth0.com. Tente em aba anônima.',
+      'Clear browser cookies for context.nimblabs.com. If you use an ad blocker, allow cookies from auth0.com. Try in a private/incognito window.',
   },
   {
-    title: 'Logout com erro de CORS',
+    title: 'Logout CORS error',
     solution:
-      'Use o botão "Sign Out" no menu de navegação. Se o problema persistir, acesse diretamente: https://context.nimblabs.com/api/auth/logout',
+      'Use the "Sign Out" button in the navigation menu. If the problem persists, navigate directly to: https://context.nimblabs.com/api/auth/logout',
   },
   {
-    title: 'Billing não carrega / plano não atualiza',
+    title: 'Billing page not loading / plan not updating',
     solution:
-      'Após um pagamento, aguarde alguns segundos e recarregue a página. O webhook do Stripe pode levar alguns instantes para processar.',
+      'After a payment, wait a few seconds and reload the page. The Stripe webhook may take a moment to process.',
   },
   {
-    title: 'Erro de conexão com o banco de dados',
+    title: 'Database connection error',
     solution:
-      'Este é um erro do servidor — não há ação do usuário. Aguarde alguns minutos e tente novamente. Se persistir, entre em contato com o suporte.',
+      'This is a server-side error — no user action is required. Wait a few minutes and try again. If it persists, contact support.',
   },
 ];
 
@@ -47,8 +47,8 @@ export default function TroubleshootingPage() {
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Resolução de Problemas</h1>
-        <p className="text-gray-600">Soluções para os problemas mais comuns do Context Keeper.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Troubleshooting</h1>
+        <p className="text-gray-600">Solutions to the most common Context Keeper issues.</p>
       </div>
 
       {issues.map(({ title, solution }) => (
