@@ -42,13 +42,33 @@ export async function POST(req: Request) {
     );
   }
 
-  // 3. Find project by path
-  const project = await prisma.project.findFirst({ where: { path: projectPath } });
+  // 3. Get-or-create project by path. The daemon never calls /api/projects,
+  // so first-seen projects are auto-registered here (name = path basename).
+  let project = await prisma.project.findFirst({ where: { path: projectPath } });
   if (!project) {
-    return new Response(
-      JSON.stringify({ error: "Project not registered — add it in the dashboard first" }),
-      { status: 404 }
-    );
+    const projectCount = await prisma.project.count({ where: { userId: user.id } });
+    const planLimits: Record<string, number> = {
+      FREE: 1,
+      PERSONAL: 5,
+      PRO: 100,
+      LIFETIME: 100,
+    };
+    const limit = planLimits[user.plan] ?? 100;
+    if (projectCount >= limit) {
+      return new Response(
+        JSON.stringify({
+          error: `Project limit reached for ${user.plan} plan`,
+          limit,
+          current: projectCount,
+        }),
+        { status: 403 }
+      );
+    }
+
+    const projectName = projectPath.split(/[/\\]/).filter(Boolean).pop() ?? projectPath;
+    project = await prisma.project.create({
+      data: { userId: user.id, name: projectName, path: projectPath },
+    });
   }
 
   // 4. Dedup by text — fetch existing texts for this project

@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
     // Enforce plan limits
     const planLimits: Record<string, number> = {
-      FREE: 0,
+      FREE: 1,
       PERSONAL: 5,
       PRO: 100,
       LIFETIME: 100,

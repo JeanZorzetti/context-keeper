@@ -45,6 +45,15 @@ export default async function Dashboard() {
     },
   });
 
+  // Project limit by plan (null = unlimited). Keep in sync with /api/decisions + /api/projects.
+  const PROJECT_LIMITS: Record<string, number | null> = {
+    FREE: 1,
+    PERSONAL: 5,
+    PRO: null,
+    LIFETIME: null,
+  };
+  const projectLimit = PROJECT_LIMITS[user.plan] ?? null;
+
   return (
     <div>
       <div className="mb-8">
@@ -58,10 +67,10 @@ export default async function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-2xl font-bold text-indigo-600">
-            {user.plan === "PERSONAL" ? `${projects.length}/5` : projects.length}
+            {projectLimit !== null ? `${projects.length}/${projectLimit}` : projects.length}
           </div>
           <div className="text-sm text-gray-600">
-            {user.plan === "PERSONAL" ? "Tracked Projects (limit)" : "Tracked Projects"}
+            {projectLimit !== null ? "Tracked Projects (limit)" : "Tracked Projects"}
           </div>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
@@ -77,10 +86,10 @@ export default async function Dashboard() {
       </div>
 
       {/* Plan limit warning */}
-      {user.plan === "PERSONAL" && projects.length >= 5 && (
+      {projectLimit !== null && projects.length >= projectLimit && (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-yellow-800 text-sm font-medium">
-            ⚠️ You've reached the project limit for the Personal plan (5 projects). Upgrade to Pro to add more projects.
+            ⚠️ You've reached the project limit for the {user.plan === "FREE" ? "Free" : "Personal"} plan ({projectLimit} project{projectLimit === 1 ? "" : "s"}). Upgrade to add more projects.
           </p>
         </div>
       )}
