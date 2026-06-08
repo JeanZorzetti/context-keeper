@@ -29,25 +29,13 @@ export default function BillingClient({
   const handleUpgrade = async (planKey: string) => {
     if (currentPlan === planKey) return;
 
-    const priceIdMap: Record<string, string | undefined> = {
-      PERSONAL: process.env.NEXT_PUBLIC_STRIPE_PRICE_PERSONAL,
-      PRO: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO,
-      LIFETIME: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIFETIME,
-    };
-
-    const priceId = priceIdMap[planKey];
-    if (!priceId) {
-      alert("Plan pricing not configured");
-      return;
-    }
-
     setLoading(planKey);
 
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceId, planType: planKey }),
+        body: JSON.stringify({ planType: planKey }),
       });
 
       const data = await response.json();

@@ -1,83 +1,19 @@
 name: CI
-
-on:
-  push:
-    branches: [main, feat/web-billing]
-    paths:
-      - "apps/web/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "apps/web/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-
+on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: context_keeper_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: latest
-
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Setup test database
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm test --filter='*'
+      - name: Build apps/web (check TypeScript errors)
         run: |
-          pnpm db:generate
-          pnpm db:migrate
-        working-directory: apps/web
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/context_keeper_test
-
-      - name: Run tests
-        run: pnpm test
-        working-directory: apps/web
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/context_keeper_test
-
-      - name: Build
-        run: pnpm build
-        working-directory: apps/web
-
-  docker:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: |
-          docker build -t context-keeper:latest -f apps/web/Dockerfile .
-        env:
-          DOCKER_BUILDKIT: 1
-
-      - name: Test Docker image
-        run: |
-          docker run --rm context-keeper:latest --version || echo "Image built successfully"
+          cd apps/web
+          npx prisma generate
+          pnpm build

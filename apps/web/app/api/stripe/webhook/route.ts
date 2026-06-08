@@ -1,9 +1,10 @@
 import { headers } from "next/headers";
-import { stripe } from "@/lib/stripe";
-import prisma from "@/lib/prisma";
+import { getStripe } from "@/lib/stripe";
+import { getPrisma } from "@/lib/prisma";
 import type Stripe from "stripe";
 
 export async function POST(req: Request) {
+  const prisma = getPrisma();
   const body = await req.text();
   const signature = (await headers()).get("stripe-signature") || "";
 
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
         const auth0Id = checkoutSession.metadata?.auth0Id;
+        const planType = checkoutSession.metadata?.planType;
         const customerId = checkoutSession.customer as string;
 
         if (!auth0Id) {
@@ -42,35 +44,28 @@ export async function POST(req: Request) {
           where: { auth0Id },
         });
 
-        if (!user) {
-          console.warn(`User not found for auth0Id ${auth0Id}`);
-          break;
-        }
+        if (user) {
+          const updates: Record<string, unknown> = {};
 
-        const updateData: any = {};
-        if (!user.stripeId) {
-          updateData.stripeId = customerId;
-        }
-
-        // For one-time payments (LIFETIME), update plan here
-        // since no subscription event will follow
-        if (checkoutSession.mode === "payment") {
-          // Retrieve line items to get the priceId
-          const lineItems = await stripe.checkout.sessions.listLineItems(
-            checkoutSession.id
-          );
-          const priceId = lineItems.data[0]?.price?.id;
-          if (priceId === process.env.STRIPE_PRICE_LIFETIME) {
-            updateData.plan = "LIFETIME";
+          if (!user.stripeId) {
+            updates.stripeId = customerId;
           }
-        }
 
-        if (Object.keys(updateData).length > 0) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: updateData,
-          });
-          console.log(`Updated user ${user.id} with data`, updateData);
+          // LIFETIME uses mode:"payment" — subscription events never fire, so
+          // we must set the plan here on checkout completion.
+          if (planType === "LIFETIME" && user.plan !== "LIFETIME") {
+            updates.plan = "LIFETIME";
+          }
+
+          if (Object.keys(updates).length > 0) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: updates as any,
+            });
+            console.log(`Updated user ${user.id}:`, updates);
+          }
+        } else {
+          console.warn(`User not found for auth0Id ${auth0Id}`);
         }
         break;
       }

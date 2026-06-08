@@ -1,8 +1,9 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import prisma from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    const prisma = getPrisma();
     const session = await getSession();
 
     if (!session?.user?.sub) {

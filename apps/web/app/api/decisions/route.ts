@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 interface DecisionInput {
   text: string;
@@ -6,6 +6,7 @@ interface DecisionInput {
 }
 
 export async function POST(req: Request) {
+  const prisma = getPrisma();
   // 1. Auth — Bearer {userApiToken}
   const auth = req.headers.get("authorization") ?? "";
   const apiToken = auth.startsWith("Bearer ") ? auth.slice(7) : "";

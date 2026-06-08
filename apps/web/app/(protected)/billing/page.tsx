@@ -1,21 +1,29 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import prisma from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 import BillingClient from "./billing-client";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Billing() {
+  const prisma = getPrisma();
   const session = await getSession();
 
   if (!session?.user?.sub) {
     return <div>Error loading user</div>;
   }
 
-  // Get user
-  const user = await prisma.user.findUnique({
+  // Get or create user
+  let user = await prisma.user.findUnique({
     where: { auth0Id: session.user.sub },
   });
 
   if (!user) {
-    return <div>Error loading user</div>;
+    user = await prisma.user.create({
+      data: {
+        auth0Id: session.user.sub,
+        email: session.user.email || "",
+      },
+    });
   }
 
   const planDetails = {

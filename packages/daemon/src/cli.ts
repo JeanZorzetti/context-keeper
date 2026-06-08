@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import { startDaemon } from './index.js';
+import * as fs from 'fs';
+import { startDaemon, PID_FILE } from './index.js';
 import { processTranscript } from './extractor.js';
 import { resolveProjectDir, findContextFiles, mergeDecisions } from './merger.js';
 
@@ -62,8 +63,17 @@ async function main() {
     }
 
     case 'status': {
-      console.log('[cli] Context Keeper status: daemon not running in this process.');
-      console.log('[cli] Use `context-keeper start` to launch the daemon.');
+      try {
+        const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim(), 10);
+        try {
+          process.kill(pid, 0);
+          console.log(`Context Keeper: running (PID: ${pid})`);
+        } catch {
+          console.log('Context Keeper: not running (stale PID file)');
+        }
+      } catch {
+        console.log('Context Keeper: not running');
+      }
       break;
     }
 

@@ -17,17 +17,18 @@ enum Plan {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  auth0Id      String   @unique
-  email        String   @unique
-  plan         Plan     @default(FREE)
-  stripeId     String?
-  groqApiKey   String?
-  autoCommit   Boolean  @default(true)
-  apiToken     String?  @unique
-  projects     Project[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String    @id @default(cuid())
+  auth0Id    String    @unique
+  email      String    @unique
+  plan       Plan      @default(FREE)
+  stripeId   String?
+  groqApiKey String?
+  autoCommit Boolean   @default(true)
+  apiToken   String?   @unique
+  projects   Project[]
+  tickets    Ticket[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model Project {
@@ -48,4 +49,21 @@ model Decision {
   text      String
   sessionId String?  // basename of .jsonl (null for daemon-pushed decisions)
   capturedAt DateTime @default(now())
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+model Ticket {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  message   String       @db.Text
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }

@@ -1,10 +1,56 @@
 import 'dotenv/config';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { startWatcher } from './watcher.js';
 import { processTranscript } from './extractor.js';
 import { resolveProjectDir, findContextFiles, mergeDecisions } from './merger.js';
 import { commitContextFiles } from './git.js';
 import { appendToIndex } from './index-writer.js';
+
+export const PID_FILE = path.join(os.homedir(), '.context-keeper', 'daemon.pid');
+
+function writePidFile(): void {
+  fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
+  fs.writeFileSync(PID_FILE, String(process.pid), 'utf8');
+}
+
+export function removePidFile(): void {
+  try { fs.unlinkSync(PID_FILE); } catch { /* already gone */ }
+}
+
+async function syncDecisionsToWeb(projectPath: string, decisions: string[]): Promise<void> {
+  const apiUrl = process.env.CONTEXT_KEEPER_API_URL;
+  if (!apiUrl) return; // offline mode — skip silently
+
+  const token = process.env.CONTEXT_KEEPER_TOKEN;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const body = JSON.stringify({
+    projectPath,
+    decisions: decisions.map(text => ({ text, createdAt: new Date().toISOString() })),
+  });
+
+  const attempt = async (): Promise<void> => {
+    const res = await fetch(`${apiUrl}/api/decisions`, { method: 'POST', headers, body });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json() as { saved: number; skipped: number };
+    console.log(`[daemon] Web sync: saved=${json.saved}, skipped=${json.skipped}`);
+  };
+
+  try {
+    await attempt();
+  } catch {
+    // one retry after 2 s
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      await attempt();
+    } catch (err) {
+      console.warn('[daemon] Web sync failed after retry:', err);
+    }
+  }
+}
 
 export interface DaemonOptions {
   autoCommit?: boolean;
@@ -16,6 +62,8 @@ export interface DaemonOptions {
  */
 export function startDaemon(options: DaemonOptions = {}): () => void {
   const { autoCommit = false } = options;
+
+  writePidFile();
 
   if (!process.env.GROQ_API_KEY) {
     console.error('[daemon] GROQ_API_KEY is not set. Extraction will fail.');
@@ -64,6 +112,9 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
       }
     }
 
+    // Fire-and-forget sync to web dashboard (errors logged inside, never blocks local pipeline)
+    syncDecisionsToWeb(projectDir, decisions).catch(() => {});
+
     if (autoCommit) {
       try {
         await commitContextFiles(contextFiles);
@@ -74,5 +125,8 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
     }
   });
 
-  return stop;
+  return () => {
+    stop();
+    removePidFile();
+  };
 }

@@ -1,11 +1,17 @@
 {
-  "name": "context-keeper-daemon",
-  "version": "0.1.0",
+  "name": "@jeanzorzetti/context-keeper",
+  "version": "1.0.0",
   "description": "Context Keeper daemon — watches Claude Code transcripts, extracts decisions via Groq, updates CLAUDE.md",
   "main": "dist/index.js",
   "bin": {
     "context-keeper": "dist/cli.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

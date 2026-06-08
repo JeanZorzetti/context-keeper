@@ -1,0 +1,8 @@
+# Normalize line endings. Shell scripts MUST be LF, or they break when executed
+# (e.g. the git hooks below) on Linux/Git-Bash even when committed from Windows.
+* text=auto eol=lf
+*.sh text eol=lf
+.githooks/* text eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf

@@ -1,9 +1,10 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import { stripe } from "@/lib/stripe";
-import prisma from "@/lib/prisma";
+import { getStripe } from "@/lib/stripe";
+import { getPrisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    const prisma = getPrisma();
     const session = await getSession();
 
     if (!session?.user?.sub) {
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     // Get active subscriptions for this customer
-    const subscriptions = await stripe.subscriptions.list({
+    const subscriptions = await getStripe().subscriptions.list({
       customer: user.stripeId,
       status: "active",
       limit: 1,
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     const subscription = subscriptions.data[0];
 
     // Cancel the subscription at the end of the current billing period
-    const canceledSubscription = await stripe.subscriptions.update(
+    const canceledSubscription = await getStripe().subscriptions.update(
       subscription.id,
       {
         cancel_at_period_end: true,

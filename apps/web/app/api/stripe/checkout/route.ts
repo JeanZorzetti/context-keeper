@@ -1,9 +1,10 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import { stripe } from "@/lib/stripe";
-import prisma from "@/lib/prisma";
+import { getStripe } from "@/lib/stripe";
+import { getPrisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    const prisma = getPrisma();
     const session = await getSession();
 
     if (!session?.user?.sub) {
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     let customerId = user.stripeId;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripe().customers.create({
         email: user.email,
         metadata: {
           auth0Id: user.auth0Id,
@@ -47,11 +48,20 @@ export async function POST(req: Request) {
       });
     }
 
-    // Get price ID and plan type from request
-    const { priceId, planType } = await req.json();
+    // Get plan type from request and resolve price ID server-side
+    // (NEXT_PUBLIC_* vars are frozen at build time; server-side vars are read at runtime)
+    const { planType } = await req.json();
+
+    const priceIdMap: Record<string, string | undefined> = {
+      PERSONAL: process.env.STRIPE_PRICE_PERSONAL,
+      PRO: process.env.STRIPE_PRICE_PRO,
+      LIFETIME: process.env.STRIPE_PRICE_LIFETIME,
+    };
+
+    const priceId = planType ? priceIdMap[planType as string] : undefined;
 
     if (!priceId) {
-      return new Response(JSON.stringify({ error: "Missing priceId" }), {
+      return new Response(JSON.stringify({ error: "Plan pricing not configured" }), {
         status: 400,
       });
     }
@@ -60,7 +70,7 @@ export async function POST(req: Request) {
     const mode = planType === "LIFETIME" ? "payment" : "subscription";
 
     // Create checkout session
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const checkoutSession = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode,
       line_items: [
@@ -74,6 +84,7 @@ export async function POST(req: Request) {
       metadata: {
         userId: user.id,
         auth0Id: user.auth0Id,
+        planType: planType as string,
       },
     });
 

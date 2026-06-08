@@ -1,38 +1,50 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
+
+# Use pnpm — the declared workspace package manager
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy web app and dependencies
-COPY apps/web ./apps/web
-COPY package.json package-lock.json ./
+# Copy workspace manifests first for layer cache efficiency
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY packages/daemon/package.json ./packages/daemon/package.json
+COPY packages/mcp/package.json ./packages/mcp/package.json
 
-# Install dependencies
-RUN npm ci
+# Install via pnpm workspace — frozen-lockfile enforces reproducible builds
+RUN pnpm install --frozen-lockfile
+
+# Copy web app source
+COPY apps/web ./apps/web
+
+# Generate Prisma client (required before TypeScript build)
+# DATABASE_URL is required by prisma.config.ts env() even for generate; use a dummy for build time
+RUN cd apps/web && DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy pnpm exec prisma generate
 
 # Build the application
-WORKDIR /app/apps/web
-RUN npm run build
-
-# Generate Prisma client
-RUN npx prisma generate
+ENV NODE_ENV=production
+RUN pnpm --filter web build
 
 # Stage 2: Runtime
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy necessary files from builder
-COPY --from=builder /app/apps/web/.next ./.next
-COPY --from=builder /app/apps/web/public ./public
-COPY --from=builder /app/apps/web/node_modules ./node_modules
-COPY --from=builder /app/apps/web/package.json ./package.json
+# Standalone output already bundles traced runtime deps — no full node_modules needed
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/prisma ./prisma
+COPY --from=builder /app/apps/web/prisma.config.ts ./
+
+# Install prisma CLI for `migrate deploy` at startup; done here (build time) not in CMD
+RUN npm install prisma --no-save
 
 EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
 
-# Run migrations and start server
-CMD ["sh", "-c", "cd /app/apps/web && npx prisma migrate deploy && node node_modules/.bin/next start"]
+# Migrate then start via standalone server (no next start / no full node_modules)
+CMD ["sh", "-c", "npx prisma migrate deploy && node apps/web/server.js"]

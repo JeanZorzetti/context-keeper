@@ -10,6 +10,7 @@ CREATE TABLE "User" (
     "stripeId" TEXT,
     "groqApiKey" TEXT,
     "autoCommit" BOOLEAN NOT NULL DEFAULT true,
+    "apiToken" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -33,7 +34,7 @@ CREATE TABLE "Decision" (
     "id" TEXT NOT NULL,
     "projectId" TEXT NOT NULL,
     "text" TEXT NOT NULL,
-    "sessionId" TEXT,
+    "sessionId" TEXT NOT NULL,
     "capturedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Decision_pkey" PRIMARY KEY ("id")
@@ -44,6 +45,9 @@ CREATE UNIQUE INDEX "User_auth0Id_key" ON "User"("auth0Id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_apiToken_key" ON "User"("apiToken");
 
 -- AddForeignKey
 ALTER TABLE "Project" ADD CONSTRAINT "Project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -78,7 +78,7 @@ export default async function Home() {
       <section className="px-8 py-24">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">Simple Pricing</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Personal */}
             <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition">
               <h3 className="text-xl font-semibold mb-2">Personal</h3>
@@ -129,23 +129,6 @@ export default async function Home() {
                 className="block text-center px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700"
               >
                 Claim Spot
-              </Link>
-            </div>
-
-            {/* Teams */}
-            <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition">
-              <h3 className="text-xl font-semibold mb-2">Teams</h3>
-              <div className="text-3xl font-bold text-indigo-600 mb-4">$20<span className="text-lg text-gray-600">/dev</span></div>
-              <ul className="text-gray-600 space-y-2 mb-6">
-                <li>✓ Min 3 developers</li>
-                <li>✓ Unified billing</li>
-                <li>✓ Contact us</li>
-              </ul>
-              <Link
-                href="mailto:sales@contextkeeper.dev"
-                className="block text-center px-4 py-2 border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-50"
-              >
-                Inquiry
               </Link>
             </div>
           </div>

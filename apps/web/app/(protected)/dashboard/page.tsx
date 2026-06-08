@@ -1,8 +1,12 @@
 import { getSession } from "@auth0/nextjs-auth0";
-import prisma from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
+import { Project, Decision } from "@prisma/client";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Dashboard() {
+  const prisma = getPrisma();
   const session = await getSession();
 
   if (!session?.user?.sub) {
@@ -53,8 +57,12 @@ export default async function Dashboard() {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-2xl font-bold text-indigo-600">{projects.length}</div>
-          <div className="text-sm text-gray-600">Tracked Projects</div>
+          <div className="text-2xl font-bold text-indigo-600">
+            {user.plan === "PERSONAL" ? `${projects.length}/5` : projects.length}
+          </div>
+          <div className="text-sm text-gray-600">
+            {user.plan === "PERSONAL" ? "Tracked Projects (limit)" : "Tracked Projects"}
+          </div>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-2xl font-bold text-indigo-600">{totalDecisions}</div>
@@ -67,6 +75,15 @@ export default async function Dashboard() {
           <div className="text-sm text-gray-600">Current Plan</div>
         </div>
       </div>
+
+      {/* Plan limit warning */}
+      {user.plan === "PERSONAL" && projects.length >= 5 && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-yellow-800 text-sm font-medium">
+            ⚠️ You've reached the project limit for the Personal plan (5 projects). Upgrade to Pro to add more projects.
+          </p>
+        </div>
+      )}
 
       {/* Projects */}
       <div className="bg-white rounded-lg shadow">
@@ -83,7 +100,7 @@ export default async function Dashboard() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {projects.map((project) => (
+            {projects.map((project: Project & { decisions: Decision[] }) => (
               <div key={project.id} className="p-6 hover:bg-gray-50 transition">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -130,7 +147,7 @@ export default async function Dashboard() {
           To start capturing architectural decisions, install and run the context-keeper daemon:
         </p>
         <code className="block bg-white p-4 rounded border border-blue-200 text-sm font-mono text-gray-800 mb-4">
-          npx context-keeper start
+          npx @jeanzorzetti/context-keeper start
         </code>
         <p className="text-sm text-blue-700">
           <Link
