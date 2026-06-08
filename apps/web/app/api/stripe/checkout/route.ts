@@ -84,6 +84,7 @@ export async function POST(req: Request) {
       metadata: {
         userId: user.id,
         auth0Id: user.auth0Id,
+        planType: planType as string,
       },
     });
 

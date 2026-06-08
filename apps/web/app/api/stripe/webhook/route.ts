@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
         const auth0Id = checkoutSession.metadata?.auth0Id;
+        const planType = checkoutSession.metadata?.planType;
         const customerId = checkoutSession.customer as string;
 
         if (!auth0Id) {
@@ -44,12 +45,24 @@ export async function POST(req: Request) {
         });
 
         if (user) {
+          const updates: Record<string, unknown> = {};
+
           if (!user.stripeId) {
+            updates.stripeId = customerId;
+          }
+
+          // LIFETIME uses mode:"payment" — subscription events never fire, so
+          // we must set the plan here on checkout completion.
+          if (planType === "LIFETIME" && user.plan !== "LIFETIME") {
+            updates.plan = "LIFETIME";
+          }
+
+          if (Object.keys(updates).length > 0) {
             await prisma.user.update({
               where: { id: user.id },
-              data: { stripeId: customerId },
+              data: updates as any,
             });
-            console.log(`Linked user ${user.id} to Stripe customer ${customerId}`);
+            console.log(`Updated user ${user.id}:`, updates);
           }
         } else {
           console.warn(`User not found for auth0Id ${auth0Id}`);
