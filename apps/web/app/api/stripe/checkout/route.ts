@@ -48,11 +48,20 @@ export async function POST(req: Request) {
       });
     }
 
-    // Get price ID and plan type from request
-    const { priceId, planType } = await req.json();
+    // Get plan type from request and resolve price ID server-side
+    // (NEXT_PUBLIC_* vars are frozen at build time; server-side vars are read at runtime)
+    const { planType } = await req.json();
+
+    const priceIdMap: Record<string, string | undefined> = {
+      PERSONAL: process.env.STRIPE_PRICE_PERSONAL,
+      PRO: process.env.STRIPE_PRICE_PRO,
+      LIFETIME: process.env.STRIPE_PRICE_LIFETIME,
+    };
+
+    const priceId = planType ? priceIdMap[planType as string] : undefined;
 
     if (!priceId) {
-      return new Response(JSON.stringify({ error: "Missing priceId" }), {
+      return new Response(JSON.stringify({ error: "Plan pricing not configured" }), {
         status: 400,
       });
     }
