@@ -7,9 +7,11 @@ const MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN;
 
 const SYSTEM_PROMPT = `You are an architectural decision extractor. Given a coding session transcript,
 extract only concrete architectural decisions made (technology choices, patterns adopted,
-constraints identified). Output as a JSON array of strings. Each string: one decision,
-max 100 chars, past tense, format "chose X over Y because Z" or "decided to X because Y".
-Ignore questions, debugging steps, and implementation details. Max 10 decisions per session.`;
+constraints identified). Respond with a JSON object of the form {"decisions": [...]} where
+the value is an array of strings. Each string: one decision, max 100 chars, past tense,
+format "chose X over Y because Z" or "decided to X because Y". Ignore questions, debugging
+steps, and implementation details. Max 10 decisions per session. If there are no decisions,
+return {"decisions": []}.`;
 
 export interface JsonlMessage {
   role: string;
@@ -92,16 +94,21 @@ export async function extractDecisions(transcript: string): Promise<string[]> {
     ],
     temperature: 0.1,
     max_tokens: 1024,
+    // Native JSON mode guarantees parseable output — no markdown fences to strip.
+    response_format: { type: 'json_object' },
   });
 
-  const raw = completion.choices[0]?.message?.content ?? '[]';
+  const raw = completion.choices[0]?.message?.content ?? '{}';
 
   try {
-    // Strip markdown code fences if present
-    const cleaned = raw.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-    if (Array.isArray(parsed)) {
-      return (parsed as unknown[])
+    const parsed = JSON.parse(raw);
+    // Accept {"decisions": [...]}, a bare array, or any object whose first
+    // array value holds the decisions (defensive against prompt drift).
+    const arr: unknown = Array.isArray(parsed)
+      ? parsed
+      : parsed.decisions ?? Object.values(parsed).find((v) => Array.isArray(v));
+    if (Array.isArray(arr)) {
+      return (arr as unknown[])
         .filter((item): item is string => typeof item === 'string')
         .map((s) => s.trim())
         .filter(Boolean)
