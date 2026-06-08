@@ -19,9 +19,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
     "chokidar": "^3.6.0",
-    "groq-sdk": "^0.7.0",
     "dotenv": "^16.4.5",
+    "groq-sdk": "^0.7.0",
     "simple-git": "^3.24.0"
   },
   "devDependencies": {

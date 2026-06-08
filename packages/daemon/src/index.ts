@@ -7,6 +7,7 @@ import { processTranscript } from './extractor.js';
 import { resolveProjectDir, findContextFiles, mergeDecisions } from './merger.js';
 import { commitContextFiles } from './git.js';
 import { appendToIndex } from './index-writer.js';
+import { fetchProviderConfig } from './config.js';
 
 export const PID_FILE = path.join(os.homedir(), '.context-keeper', 'daemon.pid');
 
@@ -65,10 +66,6 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
 
   writePidFile();
 
-  if (!process.env.GROQ_API_KEY) {
-    console.error('[daemon] GROQ_API_KEY is not set. Extraction will fail.');
-  }
-
   const stop = startWatcher(async (filePath) => {
     console.log(`[daemon] Session ended: ${filePath}`);
 
@@ -78,9 +75,15 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
       return;
     }
 
+    const config = await fetchProviderConfig();
+    if (!config) {
+      console.warn('[daemon] Could not fetch AI config from dashboard — set CONTEXT_KEEPER_API_URL + CONTEXT_KEEPER_TOKEN and configure a provider in Settings. Skipping extraction.');
+      return;
+    }
+
     let decisions: string[];
     try {
-      decisions = await processTranscript(filePath);
+      decisions = await processTranscript(filePath, config);
     } catch (err) {
       console.error(`[daemon] Extraction failed for ${filePath}:`, err);
       return;

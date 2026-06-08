@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { startDaemon, PID_FILE } from './index.js';
 import { processTranscript } from './extractor.js';
 import { resolveProjectDir, findContextFiles, mergeDecisions } from './merger.js';
+import { fetchProviderConfig } from './config.js';
 
 const [, , command, ...args] = process.argv;
 
@@ -33,13 +34,14 @@ async function main() {
         process.exit(1);
       }
 
-      if (!process.env.GROQ_API_KEY) {
-        console.error('GROQ_API_KEY is not set.');
+      const config = await fetchProviderConfig();
+      if (!config) {
+        console.error('[cli] Could not fetch AI config from dashboard. Set CONTEXT_KEEPER_API_URL + CONTEXT_KEEPER_TOKEN and configure a provider in Settings.');
         process.exit(1);
       }
 
       console.log(`[cli] Extracting decisions from: ${filePath}`);
-      const decisions = await processTranscript(filePath);
+      const decisions = await processTranscript(filePath, config);
 
       if (decisions.length === 0) {
         console.log('[cli] No architectural decisions found.');
