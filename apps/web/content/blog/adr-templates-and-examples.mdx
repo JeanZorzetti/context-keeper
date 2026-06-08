@@ -1,0 +1,315 @@
+---
+title: "ADR Templates and Examples: How to Write Architecture Decision Records"
+slug: "adr-templates-and-examples"
+description: "Ready-to-use Architecture Decision Record templates with real-world examples. Learn the MADR format, the Nygard format, and a lightweight format optimized for AI-agent workflows."
+cluster: "Teams & Architecture Docs"
+keywords: ["adr template", "architecture decision record template", "adr examples", "how to write adr"]
+primaryKeyword: "adr template"
+author: "Context Keeper Team"
+datePublished: "2026-07-25"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b"
+  alt: "Template document with structured sections representing Architecture Decision Record templates"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "template document structured sections"
+faq:
+  - q: "What sections should an ADR have?"
+    a: "A minimal ADR needs: Title, Status (proposed/accepted/deprecated), Context (why we needed to decide), Decision (what we decided), and Consequences (what changes as a result). More detailed formats add Alternatives Considered and Decision Drivers."
+  - q: "What is the MADR format?"
+    a: "MADR (Markdown Any Decision Records) is a popular ADR format that uses structured Markdown. It includes decision drivers, considered options with pros/cons, and a decision outcome. It's well-suited for team use."
+  - q: "How do I name my ADR files?"
+    a: "Use a sequential number + kebab-case title: 0001-choose-database.md, 0002-authentication-approach.md. Store them in /docs/decisions/ or /adr/ in your project root."
+relatedSlugs:
+  - "architecture-decision-records-guide"
+  - "how-to-document-architectural-decisions-automatically"
+  - "how-to-persist-architectural-decisions"
+  - "documentation-ai-agents-read"
+draft: false
+---
+
+<Tldr>
+- Minimal ADR: Title + Status + Context + Decision + Consequences
+- MADR format: adds options comparison with pros/cons — best for teams
+- AI-optimized format: flatten to 3 sentences (decision, reason, tradeoff)
+- Store as /docs/decisions/NNNN-title.md in version control
+</Tldr>
+
+## What an Architecture Decision Record Is
+
+**An Architecture Decision Record (ADR) is a short document that captures a significant architectural decision — what was decided, why it was decided, and what the consequences are.** ADRs solve the "why did we do it this way?" problem that plagues codebases after the original decision-makers have moved on or forgotten the reasoning.
+
+This guide provides ready-to-use templates for the three most useful ADR formats, with real-world examples of each.
+
+## When to Write an ADR
+
+Not every decision warrants a full ADR. Write one when:
+- The decision involves a technology choice that will be hard to change (auth system, database, message broker)
+- Multiple reasonable alternatives were considered and rejected
+- The decision has team-wide implications
+- Future developers might reasonably question or second-guess the choice
+- The decision was controversial or non-obvious
+
+Skip the ADR for: implementation details, styling conventions, variable naming, or decisions easily readable from the code itself.
+
+## The Minimal ADR (Nygard Format)
+
+The original format from Michael Nygard's blog — five sections, no more:
+
+```md
+# ADR-0001: Use PostgreSQL for Primary Database
+
+## Status
+Accepted
+
+## Context
+We need a relational database for the application. 
+The main requirements are ACID compliance, good TypeScript ORM support,
+and team familiarity.
+
+## Decision
+We will use PostgreSQL as the primary database, accessed via Prisma ORM.
+
+## Consequences
+
+Positive:
+- Team has existing PostgreSQL expertise
+- Prisma provides excellent TypeScript type safety
+- Strong ecosystem for migrations, backups, and monitoring
+
+Negative:
+- More operational complexity than SQLite for local development
+- Requires managed database service (Supabase) for production hosting
+```
+
+**When to use:** Solo projects, small teams, rapid documentation. The minimal format is fast to write and easy to read. The downside: it doesn't force you to document what alternatives you considered.
+
+## The MADR Format (Team-Recommended)
+
+MADR (Markdown Any Decision Records) is the most widely adopted ADR format for teams. It adds explicit alternatives comparison:
+
+```md
+# ADR-0002: Authentication Approach
+
+## Status
+Accepted
+
+## Context and Problem Statement
+We need user authentication. The system requires secure session management,
+support for social login (GitHub), and a clear path to SOC 2 compliance.
+
+## Decision Drivers
+- Security: session token management and XSS risk
+- Development speed: time to first working auth
+- Compliance: SOC 2 audit trail requirements
+- Team familiarity: existing expertise
+
+## Considered Options
+- Auth0 (managed identity service)
+- NextAuth (open source, self-managed)
+- Custom JWT implementation
+
+## Decision Outcome
+Chosen: **Auth0 v3**
+
+### Positive Consequences
+- Managed session refresh — no token rotation code to maintain
+- Built-in audit logs for SOC 2
+- GitHub OAuth included without custom configuration
+- 7k MAU free tier covers initial launch
+
+### Negative Consequences
+- Vendor dependency (mitigated: Auth0 is dominant with low exit risk)
+- Monthly cost at scale (~$23/month per 1k MAU above free tier)
+
+## Pros and Cons of the Options
+
+### Auth0
+- Good: managed service, no auth infrastructure to run
+- Good: built-in social login, MFA, audit logs
+- Bad: vendor lock-in
+- Bad: cost at scale
+
+### NextAuth
+- Good: open source, self-hosted, no per-user cost
+- Good: flexible, integrates with any provider
+- Bad: we manage all session handling and token refresh
+- Bad: audit logging requires custom implementation
+
+### Custom JWT
+- Good: maximum control
+- Bad: XSS risk with localStorage storage
+- Bad: significant development time
+- Bad: highest risk of security mistakes
+```
+
+**When to use:** Team projects where alternatives were actively considered, decisions that will be questioned later, or situations where the "not chosen" options documentation matters for audits or onboarding.
+
+<FigureImage src="https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b" alt="Structured template document with sections representing the format and content of Architecture Decision Records" width={1200} height={630} credit="Unsplash" />
+
+## The AI-Optimized Format
+
+For teams using AI coding agents, a standard ADR format serves human readers well but is verbose for AI consumption. An AI-optimized ADR format condenses each decision to what the agent needs:
+
+```md
+# ADR-0003: Error Handling Pattern
+
+## Decision
+All API route handlers return `{ data: T }` on success and 
+`{ error: string }` on failure — NEVER throw from handlers.
+
+## Reason
+Throwing from Next.js App Router handlers bypasses our error boundary setup
+and produces inconsistent HTTP response codes. The return-object pattern gives
+us explicit control over the HTTP status and error message in every case.
+
+## Rejected
+- `throw new Error()` — inconsistent status codes, bypasses error boundaries
+- Express-style `next(err)` — not applicable in App Router
+- HTTP status only (no body) — insufficient error detail for client-side handling
+```
+
+Three sentences for the agent: what's decided, why, and what was rejected. This format is also fast to write and can be added to `CLAUDE.md` directly (unlike full ADRs, which are too verbose for the context file).
+
+## The Hybrid Approach: Full ADR + CLAUDE.md Summary
+
+For teams that want both human-readable documentation and AI-optimized context:
+
+**Step 1:** Write a full MADR-format ADR at `docs/decisions/0002-authentication.md`
+
+**Step 2:** Add a condensed summary to `CLAUDE.md`:
+```md
+## Architecture
+- Auth: Auth0 v3 — NOT NextAuth. See ADR-0002 for full rationale.
+  Key reason: managed session refresh + SOC 2 compliance path.
+```
+
+The full ADR serves human readers (onboarding, audits, architecture reviews). The `CLAUDE.md` entry serves the AI agent (loaded every session, ~20 tokens).
+
+This separation — verbose documentation for humans, concise summaries for agents — is the pattern that serves both audiences without compromise.
+
+## File Naming and Storage Conventions
+
+Standard ADR file naming:
+```
+docs/decisions/
+├── 0001-use-postgresql.md
+├── 0002-authentication-approach.md
+├── 0003-error-handling-pattern.md
+└── 0004-api-design.md
+```
+
+Or the shorter `adr/` directory:
+```
+adr/
+├── 0001-choose-database.md
+└── 0002-auth-approach.md
+```
+
+**Sequential numbering:** Use 4-digit zero-padded numbers (0001, 0002...) so files sort correctly in directory listings.
+
+**Kebab-case titles:** Keep them short and descriptive. "0003-error-handling-pattern.md" not "0003-decision-on-the-error-handling-pattern-for-the-api-routes.md"
+
+**Commit with the code change:** The ADR for a decision should be committed in the same PR as the code that implements it. Future `git blame` then shows the decision and implementation together.
+
+<FigureImage src="https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d" alt="Organized file system with sequentially numbered documents representing ADR file storage and naming conventions" width={1200} height={630} credit="Unsplash" />
+
+## ADR Status Values
+
+Most ADR formats include a `Status` field. Common values:
+
+| Status | Meaning |
+|---|---|
+| Proposed | Under discussion, not yet decided |
+| Accepted | Decision made and in effect |
+| Deprecated | Decision was valid, now superseded |
+| Superseded by ADR-NNNN | Replaced by a newer decision |
+| Rejected | Considered but not chosen |
+
+The `Superseded by ADR-NNNN` cross-reference is particularly valuable — it creates a decision history that shows how your architecture evolved. Future developers can trace the evolution without reading through all your code history.
+
+## A Real Example: Database ORM Decision
+
+Here's a complete MADR-format ADR for a database ORM decision, suitable for copying and adapting:
+
+```md
+# ADR-0004: Database ORM Selection
+
+## Status
+Accepted
+
+## Context and Problem Statement
+We need a database access layer for our Next.js application. The team requires
+type-safe queries, a migration tool, and good documentation. PostgreSQL is 
+already chosen (ADR-0001).
+
+## Decision Drivers
+- TypeScript type safety for database queries
+- Migration management built-in
+- Developer experience and documentation quality
+- Performance for our use case (typical CRUD-heavy SaaS)
+
+## Considered Options
+- Prisma ORM
+- Drizzle ORM
+- Kysely
+- Raw pg client
+
+## Decision Outcome
+Chosen: **Prisma ORM v7**
+
+### Positive Consequences
+- Full TypeScript integration — all queries are type-checked
+- Prisma Migrate handles schema evolution
+- Prisma Studio provides a database GUI for development
+- Excellent documentation and large community
+
+### Negative Consequences
+- More abstract than raw SQL — harder to optimize complex queries
+- Bundle size (mitigated: server-only)
+- Prisma Client generation step in build pipeline
+
+## Pros and Cons of the Options
+
+### Prisma
+- Good: excellent DX, type safety, migration tooling
+- Neutral: some performance overhead vs raw SQL
+- Bad: complex queries sometimes require raw SQL fallback
+
+### Drizzle
+- Good: thinner abstraction, better query performance
+- Good: schema-first with TypeScript types
+- Bad: smaller community, less mature documentation
+- Bad: team would need to learn new patterns
+
+### Kysely
+- Good: strongly typed query builder
+- Bad: no migration tooling
+- Bad: requires more boilerplate
+
+### Raw pg
+- Good: maximum control and performance
+- Bad: no type safety without additional tools
+- Bad: migration management is entirely manual
+```
+
+## ADRs and AI Agents
+
+ADRs become more valuable when your team uses AI coding agents — see [Architecture Decision Records in the Age of AI Agents](/blog/architecture-decision-records-guide) for the full treatment. The short version:
+
+**The problem:** AI agents make decisions in sessions that disappear when the session ends. Without a systematic way to capture these decisions, your ADR collection grows stale as AI-assisted work accelerates.
+
+**The solution:** Write ADRs for significant decisions, even those reached collaboratively with an AI. The conversation where you and Claude decided on the auth approach is as valid a decision context as a team meeting. Document it.
+
+**Key Takeaways**
+
+- Minimal ADR (Nygard): 5 sections — Status, Context, Decision, Consequences. Fast, sufficient for solo work.
+- MADR: adds explicit alternatives comparison with pros/cons — best for teams where "why didn't we use X?" is a frequent question
+- AI-optimized format: 3 sentences (decision, reason, rejected) — condenses ADRs for CLAUDE.md injection
+- Hybrid approach: full ADR in docs/ for humans + condensed entry in CLAUDE.md for agents — serves both audiences
+- File naming: 4-digit zero-padded sequential + kebab-case title in docs/decisions/ or adr/
+- Status field with cross-references creates an auditable decision history
+
+Related: [Architecture Decision Records in the Age of AI Agents](/blog/architecture-decision-records-guide) · [How to Document Architectural Decisions Automatically with AI](/blog/how-to-document-architectural-decisions-automatically) · [How to Persist Architectural Decisions Across AI Sessions](/blog/how-to-persist-architectural-decisions)

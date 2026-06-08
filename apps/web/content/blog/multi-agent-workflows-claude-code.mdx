@@ -1,0 +1,208 @@
+---
+title: "Multi-Agent Workflows in Claude Code: Orchestration Explained"
+slug: "multi-agent-workflows-claude-code"
+description: "Claude Code supports multi-agent workflows where agents spawn subagents to parallelize work. Learn how to design, run, and manage multi-agent systems in Claude Code."
+cluster: "Claude Code"
+keywords: ["claude code multi-agent", "multi agent workflow", "claude code orchestration", "claude code parallel agents"]
+primaryKeyword: "claude code multi-agent"
+author: "Context Keeper Team"
+datePublished: "2026-07-01"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1531746790731-6c087fecd65a"
+  alt: "Network of coordinated agents working in parallel, representing multi-agent workflows in Claude Code"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "parallel workflow coordination network"
+faq:
+  - q: "What are multi-agent workflows in Claude Code?"
+    a: "Multi-agent workflows let a primary Claude Code agent spawn subagents to handle parallel tasks. The orchestrating agent delegates work, collects results, and synthesizes them — enabling faster completion of complex, parallelizable tasks."
+  - q: "When should I use multi-agent workflows?"
+    a: "When tasks are naturally parallelizable: analyzing multiple files simultaneously, running tests while writing code, researching different approaches in parallel, or implementing independent features concurrently."
+  - q: "How do I manage context across agents in a multi-agent workflow?"
+    a: "Each subagent gets its own context window. The orchestrating agent must explicitly pass relevant context to each subagent via its prompt. A shared CLAUDE.md ensures all agents start with baseline project context."
+relatedSlugs:
+  - "claude-code-complete-guide"
+  - "claude-code-subagents-explained"
+  - "claude-code-mcp-servers"
+  - "claude-code-best-practices"
+draft: false
+---
+
+<Tldr>
+- Multi-agent: orchestrator spawns subagents for parallel work
+- Best for: analysis, research, or independent feature work in parallel
+- Each subagent has its own context window — pass context explicitly
+- CLAUDE.md is the shared foundation that keeps agents aligned
+</Tldr>
+
+## What Are Multi-Agent Workflows?
+
+**Multi-agent workflows in Claude Code are sessions where a primary "orchestrator" agent spawns specialized "subagents" to handle parallel or specialized tasks, then integrates their results.** Instead of one agent working sequentially through a large task, multiple agents work in parallel on independent pieces, completing the work faster.
+
+Claude Code has native support for this pattern via the `Agent` tool — one of its built-in tools that spawns a new agent instance with its own context window, tools, and task scope.
+
+## Why Multi-Agent Workflows Matter
+
+The primary benefits:
+
+**Speed through parallelization.** Writing unit tests for 20 functions sequentially takes 20x the time of one function. With subagents, 5 agents each write tests for 4 functions simultaneously — 5x faster.
+
+**Context isolation.** Each subagent has its own 200,000-token context window. Complex tasks that would overflow a single context window can be decomposed across multiple agents, each handling a bounded portion.
+
+**Specialization.** Different subagents can be given different specializations: one reviews code, one writes tests, one updates documentation — each with focused instructions for its role.
+
+## When to Use Multi-Agent Workflows
+
+Multi-agent workflows add orchestration overhead. Use them only when the task is genuinely parallelizable and the speedup is worth the complexity:
+
+**Good candidates:**
+- Analyzing multiple files independently (add type annotations to each of 30 files)
+- Writing tests for a set of independent functions
+- Researching multiple approaches simultaneously ("have 3 agents investigate Redis, Postgres, and in-memory cache for this use case, then report back")
+- Running code analysis while writing new features
+
+**Poor candidates:**
+- Tasks with sequential dependencies (step 2 requires step 1's output)
+- Small, quick tasks where orchestration overhead exceeds the benefit
+- Tasks requiring a single coherent context (complex architectural decisions benefiting from unified reasoning)
+
+## Triggering Multi-Agent Workflows
+
+You don't need to write code to use multi-agent workflows. Simply instruct Claude Code to use subagents:
+
+```
+Write unit tests for every exported function in lib/auth.ts. 
+Use subagents to work on multiple functions in parallel.
+```
+
+Claude Code will use its `Agent` tool to spawn subagents, assign functions to each, collect results, and integrate them. You'll see the orchestration happening in real-time.
+
+For more explicit control:
+
+```
+Spawn 3 subagents to investigate database options for caching user session data:
+- Agent 1: investigate Redis (latency, cost, setup complexity)  
+- Agent 2: investigate PostgreSQL with row-level locking
+- Agent 3: investigate in-memory cache (limitations, invalidation)
+
+Each agent should report: recommendation, pros, cons, estimated setup time.
+Then synthesize the findings and give me a final recommendation.
+```
+
+## Context Management Across Agents
+
+The key insight for multi-agent workflows: **each subagent starts completely cold — with its own empty context window.**
+
+The orchestrator cannot share its memory with subagents. What the orchestrator knows, the subagent doesn't — unless explicitly passed in the subagent's prompt.
+
+This has two implications:
+
+**1. Pass context explicitly.** When spawning a subagent, include all relevant context in its prompt:
+
+```
+Subagent task: Add input validation to the POST /api/projects route in 
+app/api/projects/route.ts.
+
+Context you need:
+- We use zod for validation (already in package.json)
+- All API routes return { data: T } for success, { error: string } for failure
+- The Project schema fields are: name (string, required), description (string, optional), userId (string, required)
+- Existing validation example: see app/api/users/route.ts
+
+Add validation for: name (min 1 char, max 100 chars), description (max 500 chars if present).
+Run the test suite after: npm run test -- --grep "projects"
+```
+
+**2. CLAUDE.md is the shared baseline.** Every subagent reads `CLAUDE.md` on startup. This is how project-wide conventions and patterns reach subagents without explicit repetition. A good `CLAUDE.md` is even more valuable in multi-agent workflows — it's the common language across agents.
+
+<FigureImage src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac" alt="Interconnected team members working together in parallel — representing multi-agent Claude Code orchestration" width={1200} height={630} credit="Unsplash" />
+
+## A Real Multi-Agent Workflow: Adding Tests
+
+Here's a real-world example of using multi-agent orchestration effectively:
+
+**Task:** Add unit tests for 18 utility functions spread across 3 files in `lib/`.
+
+**Without multi-agent (sequential):** The agent reads each function, writes a test, verifies it works, moves to the next. Estimated time: 45–60 minutes of agent work.
+
+**With multi-agent:** You instruct Claude Code to use 3 subagents, one per file:
+
+```
+Write unit tests for all exported functions in these three files.
+Use one subagent per file, working in parallel:
+- Subagent 1: lib/auth.ts
+- Subagent 2: lib/billing.ts  
+- Subagent 3: lib/content.ts
+
+Each subagent should:
+1. Read the file and identify all exported functions
+2. Write tests in a co-located [filename].test.ts file
+3. Run the tests with `npm run test -- [filename]` and fix failures
+4. Report which functions were tested and coverage achieved
+
+Use Vitest. Mock external calls (Stripe, database) with vi.mock().
+```
+
+Estimated time: 15–20 minutes. The three agents work simultaneously.
+
+## Orchestration Patterns
+
+### Fan-Out / Fan-In
+
+The most common pattern: distribute work to N agents, collect all results, synthesize.
+
+```
+[Orchestrator] → [Agent 1: file A]
+              → [Agent 2: file B]  → [Orchestrator: integrate results]
+              → [Agent 3: file C]
+```
+
+### Pipeline
+
+Sequential with specialization: each agent does one step and passes results forward.
+
+```
+[Agent 1: read & analyze] → [Agent 2: write implementation] → [Agent 3: write tests]
+```
+
+Less parallelism, but each agent can specialize without carrying the full task context.
+
+### Research Swarm
+
+Multiple agents investigate different approaches, report findings to orchestrator, which makes the final decision:
+
+```
+[Orchestrator: define question] 
+→ [Agent 1: investigate Option A]
+→ [Agent 2: investigate Option B]
+→ [Agent 3: research existing solutions]
+→ [Orchestrator: synthesize, recommend]
+```
+
+## Limitations and Caveats
+
+**Orchestration overhead.** Spawning a subagent takes time and tokens. For a task that would take 1 minute sequentially, the 30-second overhead of spawning and coordinating a subagent isn't worth it.
+
+**Error handling is manual.** If a subagent fails or produces incorrect output, the orchestrator may not catch it. Include explicit verification steps ("run the tests after and report pass/fail") in subagent prompts.
+
+**Token costs multiply.** Each subagent has its own context window and its own token consumption. A 5-agent workflow isn't 5x cheaper than sequential — it's 5x more agents' worth of tokens, though the wall-clock time is faster.
+
+**Context isolation means no shared state.** If two subagents need to reference each other's work, the orchestrator must collect the first agent's output and include it explicitly in the second agent's prompt. There's no automatic sharing.
+
+<FigureImage src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d" alt="Command center with multiple screens and coordination stations representing Claude Code multi-agent orchestration system" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- Multi-agent workflows = orchestrator spawns subagents for parallel or specialized tasks
+- Use when tasks are parallelizable and speedup justifies orchestration overhead
+- Each subagent starts cold — pass all relevant context explicitly in the prompt
+- `CLAUDE.md` is the shared baseline all agents read; invest in it for multi-agent work
+- Common patterns: fan-out/fan-in (distribute work), pipeline (sequential specialization), research swarm
+- Token costs multiply across agents — trade cost for speed on large tasks
+- Orchestration errors require manual verification steps in subagent prompts
+
+Multi-agent workflows unlock Claude Code's most powerful capabilities for large-scale tasks. They're not for every situation — but for parallelizable work, they're a significant productivity multiplier.
+
+Related: [Claude Code Subagents Explained](/blog/claude-code-subagents-explained) · [Claude Code: The Complete Guide](/blog/claude-code-complete-guide) · [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices)

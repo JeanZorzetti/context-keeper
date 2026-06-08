@@ -1,0 +1,258 @@
+---
+title: "How to Persist Architectural Decisions Across AI Agent Sessions"
+slug: "how-to-persist-architectural-decisions"
+description: "A step-by-step guide to capturing, storing, and injecting architectural decisions into AI coding agent sessions so you never have to re-explain your architecture again."
+cluster: "Context Rot & AI Agent Memory"
+keywords: ["architectural decision tracking", "persist ai context", "ai agent decisions", "architecture decision records ai"]
+primaryKeyword: "architectural decision tracking"
+author: "Context Keeper Team"
+datePublished: "2026-06-20"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d"
+  alt: "Blueprint and architecture documents on a desk, representing architectural decision tracking for AI agents"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "architecture blueprint documents desk"
+faq:
+  - q: "What is an architectural decision in the context of AI agents?"
+    a: "Any choice you made about your project that an AI agent needs to know to generate consistent code: framework choices, naming conventions, patterns to use or avoid, rejected alternatives, and the reasoning behind key design decisions."
+  - q: "What's the best format for storing architectural decisions?"
+    a: "For AI agents, plain Markdown in a CLAUDE.md or AGENTS.md file is most effective. Structured formats like Architecture Decision Records (ADRs) are valuable for human readers but should be summarized for agent consumption."
+  - q: "How often should I update my architectural decisions file?"
+    a: "Ideally after every session where you made a significant architectural decision. Automatic tools like Context Keeper do this for you, but at minimum do a manual review weekly."
+relatedSlugs:
+  - "what-is-a-claude-md-file"
+  - "architecture-decision-records-guide"
+  - "manual-vs-automatic-context-capture"
+  - "what-is-context-rot-in-ai-coding-agents"
+draft: false
+---
+
+<Tldr>
+- Capture decisions immediately — after every session, not weekly
+- Store in CLAUDE.md / AGENTS.md at project root for auto-injection
+- Include: the decision, the alternatives rejected, and the reasoning
+- Automate capture with tools to ensure nothing falls through the cracks
+</Tldr>
+
+## Why Architectural Decisions Need to Be Persisted
+
+**Architectural decisions are the highest-value context you can give an AI coding agent — and they're also the most fragile, because they're made in conversation and lost when the session ends.** Every decision made with your AI agent that isn't persisted will need to be re-explained, re-justified, or rediscovered in a future session. This guide gives you a complete system for persisting architectural decisions so they're always available to the agent.
+
+The core problem: decisions are made in conversation. Conversation is ephemeral. When a Claude Code or Cursor session ends, the context window that held "we're using Auth0, not NextAuth, for managed sessions and the SOC 2 compliance path" is discarded. Next session, the agent doesn't know.
+
+Without a persistence system, developers spend 15–20 minutes per session re-establishing context that should have been captured when the decision was made. At 5 sessions per day over a year, that's over 400 hours of re-explanation. See [The Hidden Cost of Re-Explaining Context to AI Agents](/blog/hidden-cost-re-explaining-context) for the full calculation.
+
+## What Counts as an Architectural Decision
+
+Not every choice during a session is an architectural decision worth persisting. The test: **would an AI agent need to know this to generate consistent code for this project next week?**
+
+**High persistence value:**
+- Framework and library choices ("Next.js 15.3 App Router, not Pages Router")
+- Authentication approach ("Auth0 v3 — not NextAuth or custom JWT")
+- Database access patterns ("Prisma only — no raw SQL")
+- API response format ("return `{ data, error }` — do not throw from API handlers")
+- Explicitly rejected alternatives ("no tRPC — rejected for team familiarity reasons")
+- Naming conventions ("files: kebab-case, variables: camelCase, DB columns: snake_case")
+- File structure decisions ("all types in `types/` — never inline")
+
+**Lower persistence value:**
+- Debugging paths taken during a session
+- Exploratory attempts that were discarded
+- Implementation details that are visible in source files
+- Context that can be derived from reading the codebase
+
+When in doubt: if the agent would make the wrong choice without knowing this, persist it.
+
+## Step 1: The Capture Process
+
+**Timing:** Capture decisions when they're made, not at the end of the day. The best moment is immediately after a decision is reached in conversation. At that point, you know exactly what was decided and why.
+
+The practical pattern: when you and the agent agree on an approach, add one line to your `CLAUDE.md` before continuing:
+
+```md
+- Auth: Auth0 v3 — NOT NextAuth. Session-based. Managed sessions + SOC 2 path.
+```
+
+That's 12 seconds of interruption for permanent persistence. The alternative is re-explaining it every session.
+
+**The three-part format for maximum value:**
+
+```
+[Technology/area]: [Choice made] — NOT [rejected alternative]. [Brief reason].
+```
+
+Examples:
+
+```md
+- DB: Prisma — NOT raw SQL or Drizzle. Type-safe queries + Prisma Migrate for schema management.
+- API: Route handlers in app/api/ — NOT tRPC. Team chose simplicity + direct HTTP for existing patterns.
+- Auth: Auth0 v3 — NOT NextAuth. Managed session refresh + SOC 2 compliance path.
+- Error handling: Return { data, error } — do NOT throw from API handlers. Consistent error shapes for client.
+```
+
+The "NOT [alternative]" is not optional. It's the part that prevents the agent from proposing the rejected approach in a future session when it has no other reason to avoid it.
+
+<FigureImage src="https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d" alt="Architecture blueprint and documents on a desk representing the process of capturing and persisting architectural decisions for AI agents" width={1200} height={630} credit="Unsplash" />
+
+## Step 2: Storage Location and Format
+
+**Where to store architectural decisions:**
+
+The primary location is `CLAUDE.md` at your project root (or `AGENTS.md` if you use multiple AI tools — see [AGENTS.md vs CLAUDE.md](/blog/agents-md-vs-claude-md) for the multi-tool approach).
+
+The storage file needs to be:
+- **Automatically read by the agent at session start** — `CLAUDE.md` satisfies this for Claude Code
+- **In version control** — committed to the repo so the whole team benefits
+- **Concise** — target under 600 words total for the entire file
+
+**Recommended CLAUDE.md structure for architectural decisions:**
+
+```md
+# [Project Name] — Claude Code Context
+
+## Architecture
+- [Technology area]: [Choice] — NOT [rejection]. [Reason].
+- [Technology area]: [Choice] — NOT [rejection]. [Reason].
+
+## Do Not (with reasons)
+- [Pattern to avoid]: [Why]
+- [Approach rejected]: [Why rejected]
+
+## Patterns (for high-impact patterns, add a code example)
+- [Pattern description]
+```
+
+**What about Architecture Decision Records (ADRs)?**
+
+ADRs are a more formal document format for architectural decisions — each decision gets its own file with sections for context, decision, consequences, and status. They're valuable for human readers and team documentation.
+
+For AI agent consumption, ADRs are too verbose. An agent reading a 500-word ADR extracts the same information as a 12-word CLAUDE.md entry — but uses 40x more tokens. Keep full ADRs in `docs/decisions/` for human reference; put the condensed version in `CLAUDE.md` for agent consumption.
+
+See [Architecture Decision Records Guide](/blog/architecture-decision-records-guide) for how to maintain both.
+
+## Step 3: Structuring Decisions for Maximum Agent Impact
+
+The format of your decisions matters for how effectively the agent uses them. Three principles:
+
+**Principle 1: Be negative as well as positive**
+
+An agent without context will default to whatever "common" approach is. Positive instructions tell it what you want. Negative instructions prevent the specific wrong things.
+
+```md
+# Too weak (positive only):
+- Use Prisma for database access
+
+# Better (positive + negative):
+- Use Prisma for database access — NOT raw SQL or direct PrismaClient imports
+```
+
+**Principle 2: Include the reason**
+
+An agent that knows why you made a decision can apply the reasoning to adjacent cases. An agent that only knows the decision will fail when a new situation is slightly different.
+
+```md
+# Without reason:
+- Auth: Auth0 v3
+
+# With reason:
+- Auth: Auth0 v3 — managed session refresh handles token rotation automatically; 
+  avoids the XSS risk of JWT in localStorage; on the SOC 2 compliance path
+```
+
+**Principle 3: Code examples for behavioral patterns**
+
+For the 3–5 most important behavioral patterns, a short code snippet is more effective than a description:
+
+```md
+## API Response Pattern
+
+Success:
+```ts
+return NextResponse.json({ data: result }, { status: 200 });
+```
+
+Error:
+```ts
+return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+```
+
+Auth check (every protected route):
+```ts
+const session = await getSession();
+if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+```
+```
+
+The agent that has seen your exact pattern in code will replicate it precisely. The agent that has only read a description will approximate it.
+
+## Step 4: Automatic Capture for Ongoing Maintenance
+
+Manual capture requires discipline. Developers in the flow of building don't consistently stop to document decisions. The most important decisions — made late at night during an intense debugging session — are the least likely to get manually recorded.
+
+Automatic capture solves this. [Context Keeper](/) monitors Claude Code session transcripts via hooks and extracts architectural decisions, appending them to `CLAUDE.md` after every session automatically.
+
+Configure the hook in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "context-keeper capture" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+After every session, `context-keeper capture` runs. The session transcript is analyzed for architectural decisions, and any new decisions are appended to `CLAUDE.md` in the standard format.
+
+The result: `CLAUDE.md` stays current with the actual state of your project without requiring manual discipline.
+
+<FigureImage src="https://images.unsplash.com/photo-1512314889357-e157c22f938d" alt="Automated workflow diagram with checkmarks representing automatic architectural decision capture and persistence for AI agents" width={1200} height={630} credit="Unsplash" />
+
+## Step 5: Injection — Making Decisions Available to the Agent
+
+Once decisions are in `CLAUDE.md`, injection happens automatically when Claude Code starts: the file is loaded into the context window before the first message. No manual step required.
+
+For large projects with multiple `CLAUDE.md` files (module-level context files for different parts of a large codebase), Claude Code reads all relevant files:
+- Root `CLAUDE.md` (applies to all sessions)
+- `apps/web/CLAUDE.md` (applies when working in the web app)
+- `apps/api/CLAUDE.md` (applies when working in the API)
+
+Each file should contain only the decisions relevant to that scope.
+
+**Explicit re-injection for long sessions:**
+
+When working in a long session where early context may have degraded, you can explicitly re-inject your decisions: "As specified in CLAUDE.md, we use Auth0 for auth. Continue with that constraint." This re-anchors the agent to your decision without requiring it to recall it from degraded context.
+
+## Step 6: Keeping Decisions Current
+
+A `CLAUDE.md` that's 3 months out of date may contain wrong information — library versions that changed, patterns that were superseded, decisions that were revisited. Stale decisions can actively mislead the agent.
+
+**The quarterly review:** Every 3 months (or after a major architectural change), read every line of `CLAUDE.md` and ask:
+- Is this still true?
+- Is this still the most important thing to tell the agent about this topic?
+- Does the agent need to know this, or can it derive it from the code?
+
+Delete outdated decisions. Update version numbers. Consolidate similar entries. Keep the file focused and under 600 words.
+
+**The post-decision update:** After any significant architectural decision, update `CLAUDE.md` immediately — before the end of the session. This is the most important habit for keeping decisions current.
+
+## Key Takeaways
+
+- Capture decisions in the three-part format: `[Area]: [Choice] — NOT [rejection]. [Reason].`
+- Store in CLAUDE.md at the project root; commit to version control
+- Include both what you chose and what you rejected — rejections prevent the agent from re-proposing bad approaches
+- Reasons allow the agent to apply the same logic to adjacent situations
+- Code examples (3–5 lines) for behavioral patterns are more effective than prose descriptions
+- Automatic capture (via hooks + tools like Context Keeper) maintains freshness without discipline
+- Quarterly review prevents decision drift — stale CLAUDE.md is worse than no CLAUDE.md
+- Explicit re-injection during long sessions re-anchors the agent to your decisions
+
+Related: [What Is a CLAUDE.md File and Why It Matters](/blog/what-is-a-claude-md-file) · [Architecture Decision Records Guide](/blog/architecture-decision-records-guide) · [Manual vs Automatic Context Capture for AI Agents](/blog/manual-vs-automatic-context-capture)

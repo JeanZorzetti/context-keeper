@@ -1,0 +1,277 @@
+---
+title: "Spec-Driven Development with AI Agents: A Practical Guide"
+slug: "spec-driven-development-ai"
+description: "Writing specs before coding with AI agents produces dramatically better results. Learn the spec-driven workflow that top AI-enabled teams use."
+cluster: "Vibe Coding & Workflows"
+keywords: ["spec driven development ai", "ai agent specs", "spec before code ai", "ai coding specifications"]
+primaryKeyword: "spec driven development ai"
+author: "Context Keeper Team"
+datePublished: "2026-07-19"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"
+  alt: "Developer writing specifications on paper before coding, representing spec-driven AI development"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "writing specifications notebook planning"
+faq:
+  - q: "What is spec-driven development with AI agents?"
+    a: "Spec-driven development means writing a clear specification (inputs, outputs, constraints, edge cases) before asking the AI agent to implement. The spec becomes both the prompt and the test for the implementation."
+  - q: "Why write a spec before using an AI agent?"
+    a: "AI agents are very good at implementing what you describe precisely. Without a spec, you'll get a plausible implementation of a vague request — requiring multiple revision cycles. A clear spec gets you correct output in fewer iterations."
+  - q: "How detailed should a spec for an AI agent be?"
+    a: "Detailed enough to verify correctness. Include: what the feature does, input/output formats, edge cases to handle, performance constraints, and what NOT to do. You don't need to specify the implementation — that's the agent's job."
+relatedSlugs:
+  - "ai-coding-workflow-repeatable"
+  - "what-is-vibe-coding"
+  - "keeping-ai-agents-from-breaking-architecture"
+  - "ai-pair-programming-2026"
+draft: false
+---
+
+<Tldr>
+- Write the spec first: inputs, outputs, constraints, edge cases
+- The spec is your prompt AND your acceptance test
+- AI excels at "implement this exactly" — not at guessing vague intent
+- Spec-driven + TDD = the most reliable AI agent workflow
+</Tldr>
+
+## Why Vague Prompts Produce Poor Code
+
+**The root cause of most AI-generated code that doesn't meet expectations is vague input.** "Build a user profile page" leaves almost everything to interpretation — what data does it show? What are the loading states? What happens when the user is not logged in? How does it handle errors? What does "profile" even include for your application?
+
+AI agents are excellent at implementing what you describe precisely. They're poor at inferring what you mean when you're vague. Spec-driven development solves this by moving the clarity work to before the implementation rather than into revision cycles after.
+
+**The spec-first principle:** write a complete specification of what you want before asking the agent to build it. The spec is both your prompt and your acceptance test.
+
+## What a Good Spec Contains
+
+A spec for AI agent implementation needs to answer these questions:
+
+**What does it do?** A 1–2 sentence description of the feature's purpose and user value.
+
+**What are the inputs?** For an API: the HTTP method, path, request body schema, query parameters. For a function: the parameter types and valid ranges. For a UI component: the props.
+
+**What are the outputs?** For an API: the response schema for success and each error case. For a function: the return type and what it represents. For a UI component: what it renders under each state.
+
+**What are the constraints?** Performance requirements, security requirements, specific libraries to use, patterns to follow.
+
+**What are the edge cases?** Invalid input, empty states, rate limits, concurrent access, authentication requirements.
+
+**What should it NOT do?** Explicit exclusions prevent the agent from over-engineering or using an approach you've rejected.
+
+## A Complete Spec Example
+
+Here's a spec for a user profile update endpoint, at the level of detail that produces correct implementations:
+
+```md
+## Spec: PUT /api/user/profile
+
+### Purpose
+Allows authenticated users to update their display name and timezone preference.
+
+### Request
+- Method: PUT
+- Path: /api/user/profile
+- Auth: Required (use getSession from @auth0/nextjs-auth0)
+- Body:
+  {
+    displayName?: string  // optional; 3–50 chars if provided
+    timezone?: string     // optional; must be valid IANA timezone if provided
+  }
+  At least one field must be provided.
+
+### Success Response
+- Status: 200
+- Body: { data: UserProfile }
+  where UserProfile = { id, displayName, timezone, updatedAt }
+
+### Error Responses
+- 401: { error: "Unauthorized" } — if not authenticated
+- 400: { error: "Invalid request: <specific reason>" } — validation failures
+- 500: { error: "Internal server error" } — unexpected failures
+
+### Constraints
+- Use prisma from @/lib/prisma for DB access
+- Import UserProfile type from @/types/user
+- Do NOT throw — return error objects with HTTP status
+- Do NOT allow updating email (only displayName and timezone)
+
+### Validation rules
+- displayName: string, 3–50 characters, no HTML
+- timezone: must be in the list of valid IANA timezones
+  (use Intl.supportedValuesOf('timeZone') for validation)
+
+### Edge cases
+- If both fields are omitted: return 400
+- If displayName is all whitespace: reject (treat as empty)
+- If timezone is valid IANA string: accept; store as-is
+
+### Tests needed
+1. Authenticated update of displayName → 200 with updated profile
+2. Authenticated update of timezone → 200 with updated profile
+3. Authenticated update of both → 200 with both updated
+4. Unauthenticated → 401
+5. displayName too short → 400
+6. displayName too long → 400
+7. Invalid timezone → 400
+8. Empty body → 400
+```
+
+This spec takes 15–20 minutes to write. A typical implementation without it would require 3–4 revision cycles to get the same result, taking 45–60 minutes of back-and-forth.
+
+<FigureImage src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" alt="Developer writing specifications in a notebook before coding representing the spec-driven development workflow with AI agents" width={1200} height={630} credit="Unsplash" />
+
+## The Spec-First Workflow in Practice
+
+**Step 1: Write the spec** (15–20 minutes)
+
+Write the spec in a temporary file or directly in your message to the agent. Don't start implementation until the spec is complete.
+
+**Step 2: Share with the agent**
+
+```
+Read CLAUDE.md.
+
+Implement the following spec:
+
+[paste full spec]
+
+Start by confirming the spec is clear. Then implement one section at a time:
+1. Types
+2. Validation logic
+3. Route handler
+4. Tests
+```
+
+**Step 3: Agent confirms or asks clarifying questions**
+
+If the spec is clear, the agent should be able to implement without clarification. If it asks questions, your spec was missing something — answer and update the spec.
+
+**Step 4: Implementation with verification**
+
+As the agent implements each section, verify before moving to the next. The spec's error cases become your test cases — if all the listed test cases pass, the implementation is correct.
+
+## Spec-Driven Development as Documentation
+
+A well-written spec is valuable beyond the implementation session:
+
+**It becomes the test plan.** The edge cases in your spec map directly to test cases. If you wrote the tests while writing the spec, you're practicing TDD (Test-Driven Development) in the most natural form.
+
+**It documents intent.** When a future developer (or AI agent) looks at the code and wonders "why does it reject whitespace-only display names?", the spec provides the answer — if you store it near the code.
+
+**It reveals gaps before implementation.** Writing "what are the edge cases?" before coding forces you to think about scenarios you'd otherwise discover as bugs. The spec is a cheap pre-mortem.
+
+Store specs alongside code for features complex enough to warrant them:
+
+```
+apps/web/app/api/user/profile/
+├── route.ts          ← implementation
+├── route.test.ts     ← tests
+├── spec.md           ← the spec (for complex features)
+└── types.ts          ← types defined in the spec
+```
+
+## Combining Spec-Driven Development with AI Agents
+
+**Why spec-driven development works especially well with AI agents:**
+
+AI agents implement specifications precisely. They don't push back on requirements, they don't make judgment calls about scope, and they don't say "that seems like overkill." This is a strength — they'll implement exactly what you specify.
+
+But it means the specification is everything. A vague spec gets a vague implementation. A precise spec gets a precise implementation.
+
+The discipline required for spec-driven development — thinking through edge cases, being specific about schemas, deciding upfront what the error messages should be — naturally produces better software. AI agents just make the benefit more immediate: a good spec gives you correct code on the first pass; a vague spec gives you wrong code that requires debugging.
+
+## When to Write a Full Spec vs. a Quick Brief
+
+**Full spec (15–20 minutes):**
+- New API endpoints (especially with complex validation)
+- New components with non-trivial behavior
+- Any feature with 5+ edge cases
+- Anything that needs to handle errors gracefully
+
+**Quick brief (3–5 minutes):**
+- Simple UI changes (add a field to a form, change a label)
+- Refactoring existing code to a new pattern
+- Writing tests for existing code
+- Documentation updates
+
+**No spec needed:**
+- One-liner fixes ("add a null check before this method call")
+- Trivial changes visible in the code itself
+
+<FigureImage src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40" alt="Completed specification document with implementation plan representing the output of spec-driven development for AI coding agents" width={1200} height={630} credit="Unsplash" />
+
+## Spec Templates for Common Tasks
+
+**API endpoint spec template:**
+
+```md
+## Spec: [METHOD] /api/[path]
+
+### Purpose
+[1–2 sentences]
+
+### Request
+- Auth: [required/optional/none]
+- Body: [schema]
+
+### Success Response
+- Status: [code]
+- Body: [schema]
+
+### Error Responses
+- [code]: [condition]
+
+### Constraints
+- [library/pattern requirements]
+
+### Validation
+- [field]: [rules]
+
+### Edge Cases
+- [case]: [expected behavior]
+
+### Tests Needed
+1. [test case]
+```
+
+**UI Component spec template:**
+
+```md
+## Spec: [ComponentName]
+
+### Purpose
+[1–2 sentences]
+
+### Props
+- [prop]: [type, required/optional, description]
+
+### States
+- Loading: [what renders]
+- Empty: [what renders]
+- Error: [what renders]
+- Populated: [what renders]
+
+### Interactions
+- [user action]: [expected result]
+
+### Constraints
+- [styling/library/pattern requirements]
+
+### Edge Cases
+- [case]: [expected behavior]
+```
+
+## Key Takeaways
+
+- Spec-driven development moves clarity work before implementation, not into revision cycles after
+- A complete spec answers: what does it do, inputs, outputs, constraints, edge cases, and what NOT to do
+- 15–20 minutes writing a spec replaces 45–60 minutes of back-and-forth on a vague prompt
+- AI agents implement what you describe precisely — their precision is a strength when specs are clear
+- The spec becomes your test plan: edge cases map directly to test cases
+- Store specs alongside code for complex features as documentation of intent
+- Use full specs for complex features; quick briefs for simple changes; no spec for trivial one-liners
+
+Related: [A Repeatable Workflow for AI-Agent-Driven Development](/blog/ai-coding-workflow-repeatable) · [What Is Vibe Coding (and How to Do It Well)](/blog/what-is-vibe-coding) · [Pair Programming with AI: A 2026 Playbook](/blog/ai-pair-programming-2026)

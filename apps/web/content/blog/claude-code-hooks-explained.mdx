@@ -1,0 +1,357 @@
+---
+title: "Claude Code Hooks Explained with Examples"
+slug: "claude-code-hooks-explained"
+description: "Claude Code hooks let you run custom shell commands at specific points in the agent's lifecycle. Learn how to use them for testing, safety guardrails, and workflow automation."
+cluster: "Claude Code"
+keywords: ["claude code hooks", "claude code hook examples", "claude code automation", "claude code lifecycle hooks"]
+primaryKeyword: "claude code hooks"
+author: "Context Keeper Team"
+datePublished: "2026-06-25"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1485856407642-7f9ba0268b51"
+  alt: "Automation gears and code workflow representing Claude Code hooks for lifecycle automation"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "automation workflow gears"
+faq:
+  - q: "What are Claude Code hooks?"
+    a: "Hooks are shell commands that Claude Code executes at specific events in its lifecycle: before/after tool calls, when a session starts or ends, when files are saved, etc. They let you add guardrails, trigger tests, or run custom workflows."
+  - q: "Where do I configure Claude Code hooks?"
+    a: "In your .claude/settings.json file at the project or user level. Hooks are defined under the 'hooks' key with event types like 'PreToolUse', 'PostToolUse', and 'Stop'."
+  - q: "What can I use Claude Code hooks for?"
+    a: "Common uses: running tests after file edits, pausing before git push for review, formatting code on save, sending notifications when tasks complete, and blocking dangerous commands."
+  - q: "Can hooks stop Claude Code from taking an action?"
+    a: "Yes. Hooks that exit with a non-zero code can block the associated action. This is useful for safety guardrails — for example, blocking git push --force or edits to sensitive config files."
+relatedSlugs:
+  - "claude-code-complete-guide"
+  - "claude-code-best-practices"
+  - "claude-code-slash-commands"
+  - "claude-code-mcp-servers"
+draft: false
+---
+
+<Tldr>
+- Hooks = shell commands triggered at Claude Code lifecycle events
+- Defined in `.claude/settings.json` under the `hooks` key
+- Most useful for: test-on-save, pause-before-push, safety guardrails
+- Non-zero exit code blocks the triggering action
+</Tldr>
+
+## What Are Claude Code Hooks?
+
+**Claude Code hooks are shell commands that run automatically at specific points in the agent's lifecycle — before or after tool calls, at session start, and at session end.** Hooks let you enforce quality standards, trigger automation, and add safety guardrails without relying on manually asking the agent to do these things.
+
+Think of hooks as the equivalent of git hooks, but for AI agent actions. Just as a `pre-push` git hook runs tests before you can push, a Claude Code `PreToolUse` hook can run tests before Claude Code pushes code, or block a destructive command before it executes.
+
+## Hook Configuration: Where and How
+
+All hooks are configured in `.claude/settings.json` in your project directory. Create this file if it doesn't exist:
+
+```bash
+mkdir -p .claude
+touch .claude/settings.json
+```
+
+The basic structure:
+
+```json
+{
+  "hooks": {
+    "EventType": [
+      {
+        "matcher": "optional-tool-matcher",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "your-shell-command"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+You can also define hooks in `~/.claude/settings.json` for personal global hooks that apply across all projects.
+
+## Hook Event Types
+
+Claude Code supports four hook event types:
+
+| Event | Timing | Use case |
+|---|---|---|
+| `PreToolUse` | Before a tool runs | Block dangerous commands, validate inputs |
+| `PostToolUse` | After a tool runs | Run tests, format code, capture context |
+| `Stop` | When a session ends | Save context, send notifications, cleanup |
+| `SubagentStop` | When a subagent ends | Aggregate results, signal completion |
+
+## The Matcher: Targeting Specific Tools
+
+Without a matcher, a hook runs for every tool call. With a matcher, it only runs for specific tools. The matcher is a regex pattern matched against the tool name and its arguments.
+
+```json
+{
+  "matcher": "Edit|Write",
+  "hooks": [...]
+}
+```
+
+This matches both the `Edit` tool and the `Write` tool.
+
+```json
+{
+  "matcher": "Bash(git push*)",
+  "hooks": [...]
+}
+```
+
+This matches only `Bash` tool calls that start with `git push`. This level of precision lets you target dangerous operations specifically without blocking safe ones.
+
+## Exit Codes: How Hooks Block Actions
+
+A hook that exits with a non-zero exit code **blocks the triggering action**. This is how you use hooks as safety guardrails.
+
+```bash
+#!/bin/bash
+# hooks/check-sensitive-files.sh
+if echo "$CLAUDE_TOOL_INPUT" | grep -q "secrets/"; then
+  echo "ERROR: Attempted to edit a file in secrets/ — blocked"
+  exit 1
+fi
+exit 0
+```
+
+When this hook exits with `1`, Claude Code stops the file edit and shows the error message. The file is not touched.
+
+A hook that exits with `0` allows the action to proceed normally.
+
+## Essential Hook Patterns
+
+### 1. Typecheck on Every File Edit
+
+Catch TypeScript errors immediately, before the agent moves on to the next file:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx tsc --noEmit 2>&1 | tail -10 || true"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The `|| true` ensures the hook exits 0 even if TypeScript finds errors — this surfaces the errors in Claude Code's output without blocking the action. If you want type errors to block further edits, remove `|| true`.
+
+### 2. Run Tests After File Changes
+
+```json
+{
+  "PostToolUse": [
+    {
+      "matcher": "Edit|Write",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "npm run test -- --reporter=dot 2>&1 | tail -10"
+        }
+      ]
+    }
+  ]
+}
+```
+
+This runs the full test suite after every edit. For large test suites, this may be too slow — consider matching only specific file patterns and running only related tests.
+
+### 3. Pause Before Git Push
+
+```json
+{
+  "PreToolUse": [
+    {
+      "matcher": "Bash(git push*)",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "echo 'PAUSED: Review the diff before push. Run: git diff HEAD~1' && exit 1"
+        }
+      ]
+    }
+  ]
+}
+```
+
+This blocks all `git push` commands and requires explicit override. Claude Code will surface the message. You then review the diff and manually run the push if it looks correct. This is a strong safety practice for production branches.
+
+### 4. Auto-Format on Save
+
+```json
+{
+  "PostToolUse": [
+    {
+      "matcher": "Edit|Write",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "npx prettier --write $CLAUDE_TOOL_OUTPUT_FILE 2>/dev/null || true"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Auto-format every file Claude Code writes. The `$CLAUDE_TOOL_OUTPUT_FILE` environment variable contains the path of the file that was just edited.
+
+### 5. Capture Context at Session End
+
+```json
+{
+  "Stop": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "context-keeper capture --session-id $CLAUDE_SESSION_ID 2>/dev/null || true"
+        }
+      ]
+    }
+  ]
+}
+```
+
+This runs [Context Keeper](/) at the end of every session to automatically extract architectural decisions from the conversation and sync them to `CLAUDE.md`. The capture happens automatically — no manual step required.
+
+### 6. Block Destructive File Operations
+
+```json
+{
+  "PreToolUse": [
+    {
+      "matcher": "Bash(rm -rf*)",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "echo 'rm -rf is blocked. Use rm with specific paths.' && exit 1"
+        }
+      ]
+    }
+  ]
+}
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1614064641938-3bbee52942c7" alt="Security lock and warning symbols representing Claude Code hooks as safety guardrails for AI agent actions" width={1200} height={630} credit="Unsplash" />
+
+## Environment Variables Available in Hooks
+
+Claude Code passes context to hooks via environment variables:
+
+| Variable | Contents |
+|---|---|
+| `CLAUDE_TOOL_NAME` | Name of the tool being called (`Edit`, `Bash`, etc.) |
+| `CLAUDE_TOOL_INPUT` | JSON-encoded tool input arguments |
+| `CLAUDE_TOOL_OUTPUT` | JSON-encoded tool output (PostToolUse only) |
+| `CLAUDE_TOOL_OUTPUT_FILE` | Path of the file edited (for Edit/Write hooks) |
+| `CLAUDE_SESSION_ID` | Unique ID of the current session |
+| `CLAUDE_HOOK_EVENT` | The event type (`PreToolUse`, `PostToolUse`, etc.) |
+
+Use these in shell scripts to make context-aware decisions:
+
+```bash
+#!/bin/bash
+# Only run expensive tests for changes in the api/ directory
+if echo "$CLAUDE_TOOL_INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if 'app/api/' in d.get('file_path','') else 1)"; then
+  npm run test:api
+fi
+```
+
+## A Complete Production Settings File
+
+Here's a `settings.json` that combines the most valuable hooks for a production Next.js project:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(rm -rf *)",
+      "Bash(DROP TABLE*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npx tsc --noEmit 2>&1 | tail -5 || true" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push*)",
+        "hooks": [
+          { "type": "command", "command": "npm run test 2>&1 && echo 'Tests passed — push allowed'" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "context-keeper capture 2>/dev/null || true" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This configuration:
+- Allows npm scripts and safe git operations without prompting
+- Blocks force-push, recursive deletes, and raw SQL drops
+- Typechecks on every file edit
+- Requires tests to pass before any push
+- Captures decisions automatically at session end
+
+## Debugging Hooks
+
+When a hook doesn't behave as expected:
+
+1. **Check exit codes.** A hook that's supposed to block but doesn't — check that it's actually exiting non-zero. Add `echo "Hook exit code: $?" >> /tmp/hook-debug.log` to debug.
+
+2. **Check matcher syntax.** The matcher is a regex. `Bash(git push*)` uses shell glob syntax inside the parens, which Claude Code handles. If in doubt, simplify the matcher and test with a specific string.
+
+3. **Test the command directly.** Run the hook command in your terminal manually before adding it to settings. Ensure it behaves as expected outside Claude Code.
+
+4. **Check the Claude Code logs.** In verbose mode (`claude --verbose`), Claude Code logs hook execution and exit codes.
+
+## Key Takeaways
+
+- Hooks = shell commands at PreToolUse, PostToolUse, Stop, and SubagentStop events
+- Non-zero exit code blocks the triggering action (how guardrails work)
+- Matcher syntax targets specific tools or command patterns (supports regex)
+- Environment variables give hooks access to tool inputs, outputs, and file paths
+- Most valuable hooks: typecheck on edit, test before push, context capture on stop, block destructive commands
+- Project hooks in `.claude/settings.json` are version-controlled and shared; user hooks in `~/.claude/settings.json` are personal
+
+Hooks transform Claude Code from a fast-but-unguarded agent into a fast-and-guardrailed one. The investment in a good `settings.json` pays off every session.
+
+Related: [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices) · [Claude Code Slash Commands & Custom Skills](/blog/claude-code-slash-commands) · [Claude Code: The Complete Guide](/blog/claude-code-complete-guide)

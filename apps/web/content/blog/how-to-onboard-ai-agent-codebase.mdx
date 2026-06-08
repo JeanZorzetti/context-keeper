@@ -1,0 +1,233 @@
+---
+title: "How to Onboard an AI Agent to an Existing Codebase"
+slug: "how-to-onboard-ai-agent-codebase"
+description: "Getting an AI agent productive on an existing, unfamiliar codebase requires deliberate onboarding. Here's a systematic approach that works."
+cluster: "Vibe Coding & Workflows"
+keywords: ["ai agent onboarding", "onboard ai existing codebase", "ai coding unfamiliar codebase", "ai agent context existing project"]
+primaryKeyword: "ai agent onboarding"
+author: "Context Keeper Team"
+datePublished: "2026-07-18"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3"
+  alt: "New team member being onboarded to a project, representing how to onboard AI agents to existing codebases"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "team onboarding new member"
+faq:
+  - q: "How do I introduce an AI agent to a large, unfamiliar codebase?"
+    a: "Start with a guided tour: share the file tree, key architectural files, the README, and any existing CLAUDE.md or architecture docs. Ask the agent to summarize what it understands before starting any work."
+  - q: "What information should I always include when onboarding an AI agent?"
+    a: "Essential: tech stack and versions, project structure (key directories), the main architectural patterns in use, testing approach, and any critical constraints (performance, security, backward compatibility)."
+  - q: "How long does it take to onboard an AI agent to a codebase?"
+    a: "With a good CLAUDE.md already in place, essentially instant — the context is pre-loaded. Without one, a proper onboarding session takes 15–30 minutes to give the agent enough context to be productive."
+relatedSlugs:
+  - "how-to-write-a-great-claude-md"
+  - "ai-coding-workflow-repeatable"
+  - "documentation-ai-agents-read"
+  - "onboarding-developers-ai-readable-docs"
+draft: false
+---
+
+<Tldr>
+- Give the agent a guided tour: file tree → key files → architecture → constraints
+- Ask it to summarize back — reveals gaps before work starts
+- CLAUDE.md makes this instant for every subsequent session
+- Investment in onboarding context pays back every session
+</Tldr>
+
+## Why AI Agent Onboarding Matters
+
+**An AI coding agent's productivity on an existing codebase is directly proportional to how much it knows about that codebase — and it knows exactly nothing until you tell it.** An agent dropped into a 50,000-line Next.js application without context will default to generic TypeScript patterns, guess at your file structure, and propose approaches that conflict with your established conventions.
+
+Proper onboarding — giving the agent the context it needs before it starts working — is the difference between an agent that produces pattern-consistent code from the first message and one that requires constant correction.
+
+**The two types of onboarding:**
+
+**Persistent onboarding (CLAUDE.md):** A one-time investment that loads context automatically at every session start. Once in place, the agent is never uninformed again.
+
+**Session onboarding:** A per-session briefing for context that isn't in `CLAUDE.md` — the current task, recent changes, in-progress state.
+
+This guide covers both.
+
+## Step 1: The Project Tour (For New Codebases Without CLAUDE.md)
+
+When you first bring an AI agent onto an existing codebase that has no `CLAUDE.md`, run a structured project tour. This is a 15–30 minute investment that pays back every session.
+
+**1.1: Share the file tree**
+
+```
+List the top-level directories and describe what's in each:
+- apps/web: Next.js 15.3 App Router frontend and API routes
+- apps/api: Express.js API server (legacy, being phased out)
+- packages/shared: TypeScript types and utilities shared across apps
+- prisma: Database schema and migrations (PostgreSQL)
+- docs: Architecture docs, ADRs, onboarding guide
+
+Key config files:
+- apps/web/next.config.ts: Next.js configuration
+- apps/web/CLAUDE.md: [you'll create this]
+- prisma/schema.prisma: database schema (read this first)
+```
+
+**1.2: Point to key architectural files**
+
+Direct the agent to read the files that establish the most context:
+
+```
+Read these files in order:
+1. prisma/schema.prisma (data model)
+2. apps/web/app/(auth)/layout.tsx (auth setup)
+3. apps/web/lib/prisma.ts (database client)
+4. apps/web/app/api/user/route.ts (example of our API route pattern)
+5. apps/web/middleware.ts (auth middleware)
+
+Summarize what you understand about the architecture before we start.
+```
+
+The "summarize before we start" prompt reveals gaps. If the agent's summary is wrong or missing key elements, correct them before any work begins.
+
+**1.3: Establish constraints explicitly**
+
+After the file reads, state the constraints that aren't visible in the code:
+
+```
+Additional context:
+- Auth: Auth0 v3 — NOT NextAuth. The Auth0 integration is the one you saw in middleware.ts.
+- Performance requirement: API responses must return in under 200ms. No long-running DB queries.
+- Testing: all new code needs tests. Co-located as [file].test.ts. Use Vitest.
+- Do NOT add dependencies without discussion. The package.json is tightly controlled.
+- The apps/api directory is legacy — DO NOT add new features there. New API routes go in apps/web/app/api/.
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3" alt="New team member being onboarded to project documents representing the systematic process of onboarding AI agents to existing codebases" width={1200} height={630} credit="Unsplash" />
+
+## Step 2: Write the CLAUDE.md During the Tour
+
+The project tour session is the ideal time to write `CLAUDE.md`. As you explain the architecture to the agent, ask it to write the context file:
+
+```
+Based on what you've learned from the files I had you read and my explanations,
+write a CLAUDE.md for this project. Include:
+- Project description (2 sentences)
+- Tech stack with versions
+- Key architectural decisions with reasons
+- Commands
+- Patterns to follow (with code examples where useful)
+- Things NOT to do
+
+Keep it under 600 words.
+```
+
+Review the draft `CLAUDE.md` the agent produces. Correct any misunderstandings. Add anything missing. Commit it.
+
+From this point, every future session starts with the agent already knowing what took 30 minutes to establish today.
+
+## Step 3: Session-Level Onboarding (Every Session)
+
+Even with a thorough `CLAUDE.md`, each session benefits from a brief state briefing — the current task context that changes between sessions.
+
+**The standard opening message:**
+
+```
+Read CLAUDE.md.
+
+Current state:
+- Last session: implemented user profile GET endpoint (committed)
+- In progress: nothing
+- Today: implement profile UPDATE endpoint — PUT /api/user/profile
+  - Accepts: { displayName: string, timezone: string }
+  - Auth required: yes (same pattern as GET)
+  - Validation: displayName 3–50 chars; timezone must be valid IANA timezone
+  - Update via Prisma; return updated UserProfile
+  
+Confirm you understand before starting.
+```
+
+Total setup time: 60–90 seconds. Eliminates 15+ minutes of context reconstruction within the session.
+
+## The Onboarding Checklist
+
+For a new codebase, use this checklist to ensure complete onboarding:
+
+**Architecture:**
+- [ ] File structure and directory purpose
+- [ ] Framework and major library versions
+- [ ] Authentication approach (which library, how sessions work)
+- [ ] Database access pattern (ORM, client, where to import from)
+- [ ] API design conventions (REST vs GraphQL vs tRPC, response format)
+- [ ] Error handling pattern (throw vs return)
+
+**Development:**
+- [ ] Dev server command and port
+- [ ] Test command and framework
+- [ ] Build command
+- [ ] Database migration commands
+- [ ] Any environment variable requirements
+
+**Constraints:**
+- [ ] Performance requirements
+- [ ] Security requirements
+- [ ] What NOT to do (explicit rejections with reasons)
+- [ ] Packages that cannot be added
+- [ ] Files or directories that should not be modified
+
+**Active state:**
+- [ ] What's currently in progress
+- [ ] Recent significant changes
+- [ ] Any open issues or bugs being worked on
+
+When all items are covered, write them into `CLAUDE.md`.
+
+<FigureImage src="https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b" alt="Checklist document representing the systematic onboarding checklist for introducing AI coding agents to existing project codebases" width={1200} height={630} credit="Unsplash" />
+
+## Onboarding for Large Codebases
+
+For large codebases (100+ files, multiple services), a single `CLAUDE.md` isn't sufficient — it would need to cover too much to fit in the ideal under-600-word target.
+
+**The module-level CLAUDE.md approach:**
+
+Create a `CLAUDE.md` at multiple levels:
+```
+/CLAUDE.md          ← global context (project overview, shared conventions, commands)
+/apps/web/CLAUDE.md ← web-specific context (Next.js specifics, component patterns)
+/apps/api/CLAUDE.md ← API-specific context (Express patterns, middleware)
+```
+
+Claude Code reads all relevant CLAUDE.md files when working in a directory. The agent gets the right level of context for whatever part of the codebase it's working in.
+
+**The Repomix approach for full context:**
+
+For a one-time deep understanding session (architecture review, refactoring planning), pack the entire codebase with Repomix:
+
+```bash
+npx repomix --output codebase.txt
+```
+
+Feed the packed file to the agent for a comprehensive orientation. This is too large for daily use but excellent for initial deep dives or architectural questions.
+
+See [Repomix and Context Packing: When to Use It](/blog/repomix-context-packing) for the full guide.
+
+## Verifying Onboarding Completeness
+
+After onboarding, verify the agent understands by asking questions that require genuine knowledge:
+
+- "What library do we use for authentication? How do we check if a user is logged in in an API route?"
+- "Where would a new API endpoint go? What's the file structure?"
+- "What's our error handling convention? Show me the pattern we use."
+- "What tests do we write for a new endpoint? What testing utilities do we use?"
+
+If answers are wrong or vague, correct them and add the missing context to `CLAUDE.md`.
+
+## Key Takeaways
+
+- AI agent onboarding exists at two levels: persistent (CLAUDE.md — set up once) and per-session (state brief — every time)
+- The project tour for a new codebase: share file tree → key architectural files → constraints → ask agent to summarize
+- Write CLAUDE.md during the tour session while the context is fresh — the agent can draft it from what it read
+- Checklist for complete onboarding: architecture, development commands, constraints, and active state
+- Large codebases: module-level CLAUDE.md files at the root and subdirectory levels
+- Verify onboarding by asking questions that require genuine knowledge, not just summarizing
+- The investment: 30 minutes once vs. 15+ minutes per session indefinitely
+
+Related: [How to Write a Great CLAUDE.md (Template + Examples)](/blog/how-to-write-a-great-claude-md) · [A Repeatable Workflow for AI-Agent-Driven Development](/blog/ai-coding-workflow-repeatable) · [Documentation That AI Agents Actually Read](/blog/documentation-ai-agents-read)

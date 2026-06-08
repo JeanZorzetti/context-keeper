@@ -1,0 +1,333 @@
+---
+title: "Claude Code: The Complete Guide for Production Workflows (2026)"
+slug: "claude-code-complete-guide"
+description: "Everything you need to know about Claude Code — setup, workflows, best practices, hooks, slash commands, MCP servers, and how to use it effectively in production codebases."
+cluster: "Claude Code"
+keywords: ["claude code guide", "claude code tutorial", "claude code 2026", "how to use claude code", "claude code complete"]
+primaryKeyword: "claude code guide"
+author: "Context Keeper Team"
+datePublished: "2026-06-22"
+readingTime: 15
+heroImage:
+  src: "https://images.unsplash.com/photo-1516116216624-53e697fedbea"
+  alt: "Developer writing code in a terminal with Claude Code interface on a MacBook"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "developer terminal code macbook"
+faq:
+  - q: "What is Claude Code?"
+    a: "Claude Code is Anthropic's official CLI and agentic coding tool. It runs in your terminal and can read, write, and edit files, run commands, browse the web, and coordinate multi-step software development tasks — all driven by natural language."
+  - q: "Is Claude Code free?"
+    a: "Claude Code requires an Anthropic API key or a Claude.ai Pro subscription. Costs are based on token usage. Heavy users typically spend $50–500/month depending on usage patterns."
+  - q: "How does Claude Code differ from Claude.ai chat?"
+    a: "Claude.ai chat is a web interface for conversation. Claude Code is an agentic CLI that can directly edit your files, run terminal commands, and perform multi-step development tasks in your local environment."
+  - q: "What programming languages does Claude Code support?"
+    a: "Claude Code works with any language — it reads and writes text files. It has strong capabilities in Python, TypeScript/JavaScript, Go, Rust, Ruby, Java, and most other widely-used languages."
+  - q: "Can Claude Code work on large codebases?"
+    a: "Yes, though you need to be strategic about context. Large repos should use a good CLAUDE.md to orient the agent, and you should feed it specific files rather than entire codebases at once."
+relatedSlugs:
+  - "install-and-configure-claude-code"
+  - "claude-code-best-practices"
+  - "how-to-write-a-great-claude-md"
+  - "claude-code-mcp-servers"
+draft: false
+---
+
+<Tldr>
+- Claude Code is Anthropic's agentic CLI: edits files, runs commands, builds software
+- Works in your terminal; requires API key or Pro subscription
+- Essential setup: CLAUDE.md + good hooks + understanding context limits
+- This guide covers everything: install → workflows → advanced features
+</Tldr>
+
+## What Is Claude Code?
+
+**Claude Code is Anthropic's official agentic CLI — a command-line tool that brings Claude's intelligence directly into your terminal.** Unlike Claude.ai chat (a web interface for conversation), Claude Code can read and write your actual files, execute shell commands, browse the web, and coordinate multi-step software development tasks autonomously.
+
+You describe what you want to build or fix in natural language. Claude Code figures out the steps, reads the relevant files, makes the changes, runs the tests, and reports back. It's not autocomplete — it's a full development agent.
+
+As of 2026, Claude Code is the most capable terminal-based AI coding agent available, powered by Claude Sonnet 4.6 and Claude Opus 4.8.
+
+## Installation and Initial Setup
+
+### Prerequisites
+
+- Node.js 18+ (Node 20 LTS recommended)
+- An Anthropic API key (from console.anthropic.com) OR a Claude.ai Pro/Team subscription
+- A Unix-like terminal (macOS, Linux, or WSL2 on Windows)
+
+### Install Claude Code
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Verify the installation:
+
+```bash
+claude --version
+```
+
+### Connect Your API Key
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Add this to your `.bashrc` or `.zshrc` so it persists across sessions. Alternatively, Claude Code will prompt you to authenticate via claude.ai if you have a Pro/Team subscription and prefer browser-based auth.
+
+### First Run
+
+Navigate to a project directory and run:
+
+```bash
+claude
+```
+
+This starts an interactive Claude Code session. The agent automatically reads your `CLAUDE.md` if one exists, then waits for your instructions.
+
+For a quick one-off task without an interactive session:
+
+```bash
+claude "Fix the TypeScript errors in src/api/auth.ts"
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1629654297299-c8506221ca97" alt="Terminal window running Claude Code with code output visible — showing agentic CLI in action" width={1200} height={630} credit="Unsplash" />
+
+## Core Concepts You Need to Understand
+
+### Tools Claude Code Can Use
+
+Claude Code isn't just an LLM that outputs text — it has access to a set of tools it can call to take real actions:
+
+| Tool | What it does |
+|---|---|
+| `Read` | Read a file's contents |
+| `Edit` / `Write` | Modify or create files |
+| `Bash` | Execute shell commands |
+| `Glob` | Find files by pattern |
+| `Grep` | Search file contents |
+| `WebFetch` | Read a URL |
+| `WebSearch` | Search the web |
+| `Agent` | Spawn a subagent for parallel work |
+| `TodoWrite` | Track tasks within a session |
+
+These tools run with your filesystem permissions. Claude Code will ask for approval (or take autonomous action, depending on your permission settings) before running potentially destructive commands.
+
+### Permission Modes
+
+Claude Code has three permission modes:
+
+- **Default (ask):** Prompts you before running any tool. Safest for unfamiliar codebases.
+- **Auto-approve:** Automatically approves all tool calls. Fastest for trusted projects.
+- **Bypassable:** You can approve or deny individual tools as they come up.
+
+Set the mode via the Claude Code settings (`claude config`) or per-session with `/allowed-tools`.
+
+### Context Window and Token Cost
+
+Claude Code sessions consume API tokens. A typical short task (read a file, make a change, run tests) costs $0.10–$0.50. A complex, multi-file refactor can cost $2–$10 or more.
+
+Token costs come from:
+1. Files Claude Code reads (fed into context)
+2. The conversation history (grows with each exchange)
+3. Tool call outputs (command results, search results)
+
+Keep costs down by: scoping tasks narrowly, using `/clear` to reset context between tasks, and writing a good `CLAUDE.md` so the agent doesn't need to explore the codebase to understand it. See our guide on [reducing Claude API token costs](/blog/reduce-claude-api-token-costs) for detailed strategies.
+
+## The CLAUDE.md File: Your Most Important Configuration
+
+Every serious Claude Code user should have a `CLAUDE.md` in their project root. Claude Code reads this file automatically at the start of every session — it's how you give the agent standing instructions that survive session boundaries.
+
+A complete `CLAUDE.md` should include:
+
+```md
+# Project: [Name]
+
+## Tech Stack
+- Framework: Next.js 15.3 (App Router, not Pages)
+- Language: TypeScript 5.8, strict mode
+- Database: PostgreSQL via Prisma 7
+- Auth: Auth0 (not NextAuth, not Passport)
+- Styling: Tailwind CSS 3.4
+
+## Architectural Decisions
+- Error handling: never throw — return Result(T,E) or use error boundaries
+- State management: Zustand (not Redux, not Context API for complex state)
+- API routes: tRPC is NOT used — plain Next.js API routes in app/api/
+- Rejected: JWT in localStorage (XSS risk), MongoDB (relational model)
+
+## Commands
+- Dev: npm run dev
+- Test: npm run test (Vitest)
+- Build: npm run build
+- DB migrations: npm run db:migrate
+
+## File Conventions
+- Components: PascalCase in components/[domain]/
+- Hooks: use-[name].ts in hooks/
+- API routes: app/api/[resource]/route.ts
+- Tests: co-located as [file].test.ts
+```
+
+The more specific and opinionated your `CLAUDE.md`, the less the agent needs to explore and guess. This saves tokens, reduces mistakes, and prevents [context rot](/blog/what-is-context-rot-in-ai-coding-agents).
+
+For a full walkthrough with templates, see [How to Write a Great CLAUDE.md](/blog/how-to-write-a-great-claude-md).
+
+## Slash Commands and Custom Skills
+
+Claude Code ships with built-in slash commands:
+
+| Command | What it does |
+|---|---|
+| `/clear` | Reset conversation context (keep tools, discard history) |
+| `/compact` | Compress conversation to save tokens |
+| `/help` | Show available commands and tools |
+| `/status` | Show current session stats (tokens used, cost) |
+| `/allowed-tools` | Toggle which tools Claude can use without asking |
+| `/model` | Switch between Claude models mid-session |
+
+You can also create **custom skills** — project-specific or personal slash commands stored in `.claude/commands/` or `~/.claude/commands/`. For example, a `/review` skill that runs your linter, tests, and a code quality check before every commit.
+
+See [Claude Code Slash Commands & Custom Skills](/blog/claude-code-slash-commands) for the full reference.
+
+## Hooks: Automation at Every Step
+
+**Hooks** are shell commands that Claude Code runs automatically at specific lifecycle events. They're one of Claude Code's most powerful and underused features.
+
+Configure hooks in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npm run lint --fix" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "context-keeper capture" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This example:
+1. Auto-lints every file after Claude Code edits it
+2. Runs `context-keeper capture` at the end of every session to auto-capture architectural decisions to `CLAUDE.md`
+
+Common hook patterns:
+- Run tests after every file edit (catch regressions immediately)
+- Auto-format on write
+- Capture context at session end
+- Send Slack notification when a long agent run completes
+
+For a full breakdown with examples, see [Claude Code Hooks Explained](/blog/claude-code-hooks-explained).
+
+## MCP Servers: Extending Claude Code's Reach
+
+The **Model Context Protocol (MCP)** allows Claude Code to connect to external tools and data sources. MCP servers expose tools, resources, and prompts that Claude Code can use during a session.
+
+Practical MCP servers for developers:
+
+- **@modelcontextprotocol/server-filesystem** — secure, sandboxed filesystem access
+- **@modelcontextprotocol/server-postgres** — query your database directly
+- **@modelcontextprotocol/server-github** — create PRs, read issues, browse code
+- **@modelcontextprotocol/server-puppeteer** — control a browser for E2E testing
+
+Configure MCP servers in `.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
+    }
+  }
+}
+```
+
+See [Claude Code MCP Servers: What They Are & How to Use](/blog/claude-code-mcp-servers) for a full setup guide.
+
+<FigureImage src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64" alt="Network diagram showing MCP server connections to Claude Code, representing the Model Context Protocol integration" width={1200} height={630} credit="Unsplash" />
+
+## Production Workflow Patterns
+
+### The Task-Based Session Pattern
+
+The most effective Claude Code workflow for production codebases:
+
+1. **Open with context.** "Read CLAUDE.md. Today's task: [specific feature or fix]."
+2. **Scope narrowly.** Give the agent one clearly bounded task. Avoid "fix everything wrong with the codebase."
+3. **Review before accepting.** For every file edit, review the diff. Claude Code's changes are good, but you are the final reviewer.
+4. **Run tests explicitly.** "Run the test suite and fix any failures." Don't assume green — verify.
+5. **Capture decisions.** After a significant session, update `CLAUDE.md` with any new patterns established.
+6. **Clear and restart** for the next task. `/clear` resets context so the next task starts fresh.
+
+### Multi-Agent Workflows
+
+For large tasks — migrating a database schema, refactoring a module, writing 20 unit tests — Claude Code can spawn subagents using the `Agent` tool. These run in parallel, each with their own context window.
+
+Example: "Write unit tests for every exported function in `lib/auth.ts`. Use subagents to work on multiple functions in parallel."
+
+Claude Code will coordinate the work across agents and report results. This is one of its most powerful capabilities for large-scale tasks. See [Multi-Agent Workflows in Claude Code](/blog/multi-agent-workflows-claude-code) for patterns and caveats.
+
+### Debugging Workflow
+
+Claude Code is excellent at debugging. The most effective pattern:
+
+1. Paste the exact error output (stack trace, logs, failing test)
+2. Say: "Read the relevant files and diagnose the root cause. Don't fix yet — explain what's wrong."
+3. Review the diagnosis. Ask questions if needed.
+4. "Now fix it, and run the tests to confirm."
+
+This two-step approach (diagnose → fix) prevents the agent from making confident but wrong fixes.
+
+## What Claude Code Is NOT Good At
+
+Being honest about limitations makes you a better Claude Code user:
+
+- **Novel algorithm design.** Claude Code is excellent at implementing known patterns. For genuinely new algorithmic approaches, use it as a starting point and verify carefully.
+- **Security-critical code.** Auth systems, cryptography, payment flows — always have a human expert review this code, regardless of how confident the agent sounds.
+- **Unfamiliar massive codebases.** Feeding a 500k-line monorepo to Claude Code without a good `CLAUDE.md` will produce expensive, low-quality output. Context quality matters.
+- **Replacing code review.** Claude Code is a developer, not a senior engineer. It doesn't catch every subtle bug, design flaw, or security issue. Review everything it writes.
+
+## Claude Code vs the Claude API
+
+| | Claude Code | Anthropic API |
+|---|---|---|
+| **Interface** | Terminal CLI | HTTP REST API |
+| **Tools** | Built-in (files, bash, web) | You define them |
+| **Session management** | Automatic | You manage |
+| **Best for** | Developer productivity | Building AI applications |
+| **Pricing** | API usage-based | API usage-based |
+| **Control** | Opinionated UX | Full control |
+
+Claude Code is built on the Anthropic API internally. If you're building a product (not just using AI as a developer tool), you likely want the API directly. See [Claude Code vs the Anthropic API](/blog/claude-code-vs-api) for a deeper comparison.
+
+## Key Takeaways
+
+- Claude Code is a full development agent, not a chat interface — it reads files, writes files, and runs commands
+- `CLAUDE.md` is your most important configuration; it defines every session's starting context
+- Hooks enable automation at every lifecycle event (lint on write, capture context on stop)
+- MCP servers extend Claude Code's capabilities to databases, GitHub, browsers, and more
+- Scope tasks narrowly, review every diff, and use `/clear` between tasks
+- Token costs are manageable with good `CLAUDE.md` context and narrow task scoping
+- Not a replacement for engineering judgment — an amplifier of it
+
+The developers who get the most from Claude Code are the ones who invest in their `CLAUDE.md`, understand the context window, and treat the agent as a junior developer who needs good direction. With those habits in place, Claude Code is a genuine productivity multiplier for production work.
+
+Related reading: [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices) · [Install and Configure Claude Code](/blog/install-and-configure-claude-code) · [How to Write a Great CLAUDE.md](/blog/how-to-write-a-great-claude-md)

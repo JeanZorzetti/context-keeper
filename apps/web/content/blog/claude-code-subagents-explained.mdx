@@ -1,0 +1,230 @@
+---
+title: "Claude Code Subagents Explained: Types, Use Cases, and Best Practices"
+slug: "claude-code-subagents-explained"
+description: "Claude Code subagents are specialized agents spawned by an orchestrator to handle specific tasks. Learn the different subagent types, when to use each, and how to prompt them effectively."
+cluster: "Claude Code"
+keywords: ["claude code subagents", "claude code agent types", "subagent claude", "claude code specialized agents"]
+primaryKeyword: "claude code subagents"
+author: "Context Keeper Team"
+datePublished: "2026-07-02"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158"
+  alt: "Specialized worker bees representing Claude Code subagents handling specific tasks in a workflow"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "specialized workers team roles"
+faq:
+  - q: "What is a Claude Code subagent?"
+    a: "A subagent is a Claude Code agent instance spawned by an orchestrating agent to handle a specific, scoped task. The orchestrator delegates work to subagents and integrates their results."
+  - q: "What types of subagents does Claude Code support?"
+    a: "Claude Code supports several built-in subagent types (code-review, explore, plan, general-purpose) and custom subagents defined via skill files. Each type has specific tools and capabilities."
+  - q: "How do I write good prompts for Claude Code subagents?"
+    a: "Treat subagents like new colleagues who don't have your conversation history. Provide all necessary context in the prompt, specify the exact output format you need, and include constraints and background explicitly."
+relatedSlugs:
+  - "multi-agent-workflows-claude-code"
+  - "claude-code-complete-guide"
+  - "claude-code-slash-commands"
+  - "claude-code-best-practices"
+draft: false
+---
+
+<Tldr>
+- Subagents are scoped instances spawned by an orchestrator
+- Each starts cold — provide full context in the prompt
+- Built-in types: explore, plan, code-review, general-purpose
+- Custom types via skill files in .claude/commands/
+</Tldr>
+
+## What Is a Claude Code Subagent?
+
+**A Claude Code subagent is an agent instance spawned by an orchestrating agent to handle a specific, scoped task.** The orchestrator delegates a bounded piece of work to the subagent, the subagent executes it in its own context window with its own tools, and returns a result.
+
+Subagents are created via the `Agent` tool — one of Claude Code's built-in tools. From the orchestrator's perspective, spawning a subagent is like calling a function: you pass a prompt (the task brief), and eventually get a result (the subagent's output).
+
+Every subagent starts with a fresh context window. It reads `CLAUDE.md` at startup, has access to all configured tools and MCP servers, but has no knowledge of the orchestrator's conversation history — only what you explicitly pass in its prompt.
+
+## Built-In Subagent Types
+
+Claude Code ships with several named subagent types, each with specific tools and behaviors:
+
+| Type | Purpose | Key tools |
+|---|---|---|
+| `general-purpose` | Default; handles any task | All tools |
+| `Explore` | Fast read-only codebase search | Glob, Grep, Read, WebFetch, WebSearch |
+| `Plan` | Architecture design and planning | Read tools only (no writes) |
+| `claude-code-guide` | Claude Code documentation questions | Glob, Grep, Read, WebFetch, WebSearch |
+
+### The `Explore` Agent
+
+The `Explore` agent is optimized for fast code search. It has access to read-only tools only — no file writes, no bash commands. This makes it safe to use for research without worrying about unintended side effects.
+
+Use `Explore` when you need to find something in the codebase without making changes:
+
+```
+Use an Explore agent to find all places where we check user authentication 
+before returning data in API routes. Search for getSession(), auth middleware, 
+and auth checks. Report the files and line numbers.
+```
+
+The `Explore` agent reads files and searches the codebase efficiently, then reports back with its findings. The orchestrator can then use those findings to direct actual changes.
+
+### The `Plan` agent
+
+The `Plan` agent is designed for architecture design before implementation. It also has read-only tools — it reads code, designs solutions, and produces plans, but makes no changes.
+
+```
+Use a Plan agent to design the database schema changes needed to support 
+team-based access control. We currently have Users and Projects. We need 
+Teams with roles. Read the current schema.prisma and design the migration.
+Do not make any changes — just provide the plan.
+```
+
+A plan from the `Plan` agent becomes the input for an implementation agent.
+
+## Writing Effective Subagent Prompts
+
+The quality of a subagent's output depends almost entirely on the quality of its prompt. Since subagents start cold (no shared memory with the orchestrator), the prompt must be a complete, self-contained brief.
+
+### The Self-Contained Brief Structure
+
+A good subagent prompt includes:
+
+1. **The task** — what to do, precisely
+2. **Relevant context** — what the subagent needs to know that isn't in `CLAUDE.md`
+3. **Constraints** — what to avoid or watch out for
+4. **Output format** — how to report results
+5. **Verification step** — how to confirm the work is correct
+
+**Example — test-writing subagent:**
+
+```
+Task: Write unit tests for all exported functions in lib/billing.ts.
+
+Context:
+- Testing framework: Vitest with @testing-library/react
+- Tests go in lib/billing.test.ts (co-located)
+- External calls (Stripe, database) should be mocked with vi.mock()
+- See lib/auth.test.ts for an example of our test style
+- Error handling: our functions return { data, error } objects; test both success and error paths
+
+Constraints:
+- Do not modify lib/billing.ts
+- Do not import any test utilities we don't already use
+- Each test should have a clear, descriptive name following the pattern: "functionName — scenario"
+
+Verification:
+- After writing tests, run: npm run test -- lib/billing
+- If tests fail, diagnose and fix
+- Report final coverage for lib/billing.ts
+```
+
+This prompt would take less than 2 minutes to write and produces dramatically better test coverage than a vague "write tests for billing.ts."
+
+<FigureImage src="https://images.unsplash.com/photo-1542831371-29b0f74f9713" alt="Code editor with test files open showing unit test writing, representing Claude Code subagent test generation workflow" width={1200} height={630} credit="Unsplash" />
+
+## Custom Subagent Types via Skills
+
+Beyond the built-in types, you can define custom subagent behaviors using skill files. Create a file in `.claude/commands/`:
+
+```md
+# .claude/commands/security-reviewer.md
+
+You are a security-focused code reviewer. Analyze the provided code for:
+
+1. **Injection vulnerabilities** — SQL injection, XSS, command injection
+2. **Authentication/authorization gaps** — missing auth checks, overly broad permissions
+3. **Input validation** — unvalidated user input reaching sensitive operations
+4. **Sensitive data exposure** — secrets, PII in logs or responses
+5. **Dependency vulnerabilities** — any imported packages with known CVEs
+
+For each issue found:
+- Severity: Critical / High / Medium / Low
+- File and line number
+- Description of the vulnerability
+- Suggested fix
+
+If no issues are found, say so explicitly.
+```
+
+Now you can direct the orchestrator to use this specialized behavior:
+
+```
+Use the security-reviewer skill to audit app/api/billing/route.ts 
+and app/api/users/route.ts.
+```
+
+Claude Code invokes the skill and the subagent performs the specialized security review.
+
+## Parallel vs Sequential Subagents
+
+**Parallel subagents** are spawned simultaneously and work independently. Best for independent tasks:
+
+```
+Spawn 4 parallel subagents to add input validation to these routes:
+- Subagent 1: app/api/projects/route.ts
+- Subagent 2: app/api/users/route.ts  
+- Subagent 3: app/api/billing/route.ts
+- Subagent 4: app/api/invites/route.ts
+
+Each subagent: read the route, add zod validation to POST handlers, 
+run the route's tests, report pass/fail.
+```
+
+**Sequential subagents** are spawned one after another, where each uses the previous one's output:
+
+```
+1. Spawn an Explore agent to map the current auth flow across all API routes.
+   Report the files and patterns you find.
+
+2. (After Explore completes) Spawn a Plan agent with those findings.
+   Design a unified auth middleware that covers all the cases found.
+   
+3. (After Plan completes) Implement the middleware from the plan.
+```
+
+The orchestrator coordinates the handoff between sequential agents.
+
+## Monitoring Subagent Work
+
+Claude Code surfaces subagent activity in real-time. You'll see:
+- When each subagent starts and its task
+- Tool calls the subagent makes (file reads, bash commands)
+- When the subagent completes and its output
+- Any errors the subagent encountered
+
+This visibility lets you intervene if an agent goes off-track:
+
+```
+/stop-agent [agent-id]    # Stop a specific subagent
+```
+
+Or redirect by giving the orchestrator new instructions. The orchestrator can adjust and re-delegate.
+
+## Token Cost Considerations
+
+Each subagent consumes tokens independently:
+- Its own `CLAUDE.md` read at startup
+- Its own conversation and reasoning
+- Its own file reads and tool calls
+
+A 5-agent parallel workflow costs roughly 5x more tokens than sequential execution of the same work — but completes in the time of one agent's work. You're trading cost for speed.
+
+For expensive workflows, use the `Explore` agent type where possible — it uses faster, more efficient search tools and doesn't incur the overhead of bash or file write operations.
+
+<FigureImage src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e" alt="Multiple work streams flowing in parallel representing Claude Code subagent parallel execution" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- Subagents are scoped agent instances spawned via the `Agent` tool; each has its own context window
+- Built-in types: `Explore` (read-only codebase search), `Plan` (design without writes), `general-purpose` (default)
+- Subagents start cold — include all necessary context in the prompt (don't assume shared memory)
+- Write self-contained briefs: task + context + constraints + output format + verification step
+- Define custom subagent behaviors via skill files in `.claude/commands/`
+- Parallel = simultaneous, independent tasks; sequential = ordered, dependent tasks using previous output
+- Token cost multiplies with agent count — trade cost for speed on large tasks
+
+Subagents are Claude Code's most powerful feature for scale. Master the art of writing complete, self-contained subagent prompts, and you unlock a genuine force multiplier for large development tasks.
+
+Related: [Multi-Agent Workflows in Claude Code](/blog/multi-agent-workflows-claude-code) · [Claude Code Slash Commands & Custom Skills](/blog/claude-code-slash-commands) · [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices)

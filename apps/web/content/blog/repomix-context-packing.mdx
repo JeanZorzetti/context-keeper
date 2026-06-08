@@ -1,0 +1,250 @@
+---
+title: "Repomix and Context Packing: When to Use It for AI Agents"
+slug: "repomix-context-packing"
+description: "Repomix packs your entire repository into a single file for AI consumption. Learn what it is, how to use it, and when it's the right tool for providing codebase context to AI agents."
+cluster: "AI Coding Tools & Comparisons"
+keywords: ["repomix", "context packing", "repository to ai", "repomix tutorial", "codebase context ai"]
+primaryKeyword: "repomix"
+author: "Context Keeper Team"
+datePublished: "2026-07-12"
+readingTime: 7
+heroImage:
+  src: "https://images.unsplash.com/photo-1562813733-b31f71025d54"
+  alt: "Files being packed and compressed into a single bundle representing Repomix context packing for AI"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "files bundle compress pack"
+faq:
+  - q: "What is Repomix?"
+    a: "Repomix is an open-source tool that converts your entire codebase into a single AI-readable file. It respects .gitignore, can output in Markdown or XML, and includes file trees and syntax-highlighted code."
+  - q: "When should I use Repomix?"
+    a: "Repomix is best for: getting AI code review of a full project, onboarding an AI agent to an unfamiliar codebase, asking questions that require understanding the full project structure, or creating a snapshot for documentation."
+  - q: "What are the limitations of Repomix?"
+    a: "Large repos produce outputs that exceed most LLM context windows. Repomix captures code but not decisions — it doesn't replace CLAUDE.md or AGENTS.md, which capture why decisions were made, not just what the code is."
+relatedSlugs:
+  - "best-ai-coding-agents-2026"
+  - "how-to-persist-architectural-decisions"
+  - "context-compression-techniques"
+  - "ai-readable-documentation"
+draft: false
+---
+
+<Tldr>
+- Repomix = tool to pack your whole repo into one AI-readable file
+- Best for: full-codebase questions, code review, AI onboarding
+- Not a replacement for CLAUDE.md — captures code, not decisions
+- Large repos will exceed context windows; use .repomixignore to filter
+</Tldr>
+
+## What Is Repomix?
+
+**Repomix is an open-source tool that converts your entire codebase into a single, AI-optimized file.** It walks your repository, reads every source file, and outputs a structured document that an AI model can process — either as Markdown, XML, or plain text.
+
+The idea: instead of feeding an AI agent individual files as needed, you pack the whole codebase upfront so the AI has complete context from the start.
+
+```bash
+npx repomix
+```
+
+This command in your project root generates `repomix-output.txt` (or `.md`, `.xml`) — a file containing your entire codebase, ready to paste into Claude, Gemini, or any other LLM with a large context window.
+
+Repomix respects `.gitignore` by default and lets you create a `.repomixignore` for additional exclusions (build artifacts, large binary files, lock files).
+
+## How Repomix Works
+
+Repomix produces a structured output like this:
+
+```
+# Repomix Output for: my-project
+
+## Summary
+- Files: 47
+- Tokens: 127,432
+
+## Directory Structure
+my-project/
+├── src/
+│   ├── api/
+│   │   ├── auth.ts
+│   │   ├── users.ts
+│   └── lib/
+│       ├── prisma.ts
+│       └── utils.ts
+├── prisma/
+│   └── schema.prisma
+└── ...
+
+## File Contents
+
+### src/api/auth.ts
+```typescript
+import { getSession } from "@auth0/nextjs-auth0";
+// ... full file contents ...
+```
+
+### src/lib/prisma.ts
+// ... etc
+```
+
+The output includes the full directory tree and all file contents in one document. Feed this to an AI and it has complete visibility into your entire codebase.
+
+## When to Use Repomix
+
+### Use Case 1: Full-Codebase Code Review
+
+You want an AI to review a complex refactor that touches many files. Instead of feeding files one by one (which loses cross-file context), pack the whole repo and say:
+
+```
+Here is my entire codebase (repomix output attached). 
+Please review the auth system architecture across all files 
+and identify any security vulnerabilities, inconsistencies, 
+or code quality issues.
+```
+
+The AI can now trace auth logic across middleware, route handlers, and utilities — with full context.
+
+### Use Case 2: AI Onboarding to an Unfamiliar Codebase
+
+When starting work on a codebase you haven't seen before, pack it with Repomix and ask:
+
+```
+Here is the full codebase. Please:
+1. Summarize the architecture (what it does, how it's structured)
+2. Identify the key entry points and important modules
+3. Tell me the tech stack from what you can see
+4. Note any unusual patterns or non-standard approaches
+```
+
+This gives you a thorough AI-powered codebase orientation in minutes instead of hours.
+
+### Use Case 3: Architecture Questions Requiring Global Context
+
+"What would be the impact of switching from session-based auth to JWT across this codebase?" — a question that requires understanding every file that touches auth.
+
+Repomix gives the AI the full picture to answer these questions accurately.
+
+### Use Case 4: Generating Documentation
+
+Pack the entire codebase and ask the AI to generate comprehensive documentation, a README, or an architecture overview. The AI has everything it needs to write accurate, specific documentation rather than generic boilerplate.
+
+<FigureImage src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4" alt="Code files being organized and compressed representing the Repomix context packing process" width={1200} height={630} credit="Unsplash" />
+
+## Practical Usage
+
+### Installation and Basic Usage
+
+```bash
+# One-time (no install)
+npx repomix
+
+# Install globally
+npm install -g repomix
+repomix
+
+# Specify output format
+repomix --style markdown
+repomix --style xml
+
+# Pack a specific directory
+repomix ./src
+
+# Include only certain file types
+repomix --include "**/*.ts,**/*.tsx"
+```
+
+### Managing Large Repos with `.repomixignore`
+
+For large codebases, the unfiltered output may exceed context windows. Create `.repomixignore` to exclude irrelevant content:
+
+```
+# .repomixignore
+package-lock.json
+yarn.lock
+.next/
+dist/
+coverage/
+*.min.js
+*.map
+node_modules/
+**/*.test.ts    # Exclude tests for architecture questions
+**/*.spec.ts
+```
+
+Run `repomix --token-count` first to see how large the output will be before committing to feeding it to an AI:
+
+```bash
+repomix --token-count
+# Output: Total tokens: 127,432
+```
+
+Claude Sonnet 4.6 supports 200,000 tokens — a 127,000-token Repomix output fits comfortably. A 350,000-token output does not.
+
+### Which AI Model to Use with Repomix
+
+Repomix is most useful with large-context models:
+
+| Model | Context window | Suitable for |
+|---|---|---|
+| Claude Sonnet 4.6 | 200,000 tokens | Repos up to ~150k tokens |
+| Claude Opus 4.8 | 200,000 tokens | Same, with better reasoning |
+| Gemini 1.5 Pro | 1,000,000 tokens | Very large repos |
+| GPT-4o | 128,000 tokens | Smaller repos only |
+
+For very large codebases, Gemini 1.5 Pro's 1M token window is genuinely useful — you can pack a substantial monorepo and have complete context.
+
+## What Repomix Is NOT Good For
+
+### It Captures Code, Not Decisions
+
+Repomix captures what your code does. It doesn't capture why you made the decisions you made. The agent reading a Repomix output can see that you use Auth0, but it doesn't know:
+- Why you chose Auth0 over Passport
+- What alternatives you explicitly rejected
+- What constraints shaped the decision
+
+This is the gap that `CLAUDE.md` fills. Repomix and `CLAUDE.md` are complementary, not competing:
+- **Repomix** → "here's all the code, understand the current state"
+- **CLAUDE.md** → "here's why it looks this way, what to preserve, and what to avoid"
+
+### It Doesn't Replace Iterative Development Context
+
+For ongoing, session-to-session development work, Repomix is overkill. Reading the whole codebase every session is expensive and slow. Claude Code with `CLAUDE.md` is more appropriate for iterative development — it reads files as needed and carries project context in a lightweight format.
+
+Repomix is for specific, full-codebase tasks. Daily development uses targeted file reads.
+
+### Context Window Limits Apply
+
+Large repos with 500+ files may produce outputs exceeding even Gemini's 1M token context. For these codebases, pack only the relevant module:
+
+```bash
+repomix ./src/api    # Pack just the API module
+repomix ./packages/auth   # Pack just the auth package
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1544197150-b99a580bb7a8" alt="Data flowing into a compressed bundle representing the context packing workflow with Repomix" width={1200} height={630} credit="Unsplash" />
+
+## Repomix in the AI Development Workflow
+
+A practical workflow that combines Repomix with ongoing AI development:
+
+1. **Project start / onboarding:** Use Repomix to give the AI a full codebase overview. Generate initial `CLAUDE.md` from this analysis.
+
+2. **Daily development:** Use Claude Code with `CLAUDE.md` for targeted, efficient development sessions.
+
+3. **Major refactors or reviews:** Pack the relevant module with Repomix for full cross-file context. Use the large-context model.
+
+4. **Documentation generation:** Monthly or on releases, pack the full codebase for documentation updates.
+
+Repomix fills the "full context" use case that targeted file reads can't cover. `CLAUDE.md` fills the "ongoing architectural context" use case that Repomix is too expensive for.
+
+## Key Takeaways
+
+- Repomix packs your entire codebase into one AI-readable file — use `npx repomix` in any project
+- Best for: full-codebase code review, AI onboarding to an unfamiliar repo, architecture questions, documentation generation
+- Not for: daily iterative development (too expensive, too large)
+- Create `.repomixignore` for large repos to exclude build artifacts and lock files
+- Check token count with `repomix --token-count` before feeding to an AI
+- Repomix and CLAUDE.md are complementary: Repomix = current code state; CLAUDE.md = decision rationale
+- For very large codebases: use Gemini 1.5 Pro (1M token window) or pack individual modules
+
+Related: [Context Compression Techniques for Long Agent Sessions](/blog/context-compression-techniques) · [How to Persist Architectural Decisions Across AI Sessions](/blog/how-to-persist-architectural-decisions) · [Documentation That AI Agents Actually Read](/blog/documentation-ai-agents-read)

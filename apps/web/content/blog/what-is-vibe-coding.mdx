@@ -1,0 +1,192 @@
+---
+title: "What Is Vibe Coding (and How to Do It Well)"
+slug: "what-is-vibe-coding"
+description: "Vibe coding is the practice of building software by describing what you want to AI agents rather than writing every line yourself. Here's what it actually means and how to do it productively."
+cluster: "Vibe Coding & Workflows"
+keywords: ["vibe coding", "what is vibe coding", "ai agent coding style", "vibe code development"]
+primaryKeyword: "vibe coding"
+author: "Context Keeper Team"
+datePublished: "2026-07-16"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1549692520-acc6669e2f0c"
+  alt: "Relaxed developer at laptop trusting AI to write code, representing the vibe coding workflow"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "relaxed developer laptop flow state"
+faq:
+  - q: "What does 'vibe coding' mean?"
+    a: "Vibe coding refers to a development style where you describe your intent to an AI agent in natural language, review and guide the output, and iterate quickly — rather than writing every line of code manually. The 'vibe' refers to the flow state of describing what you want rather than how to implement it."
+  - q: "Is vibe coding a real productivity improvement or just hype?"
+    a: "For many tasks — especially CRUD, boilerplate, standard patterns — vibe coding is genuinely 3–10x faster. For novel algorithms, security-critical code, or areas requiring deep precision, it works best as a starting point with careful review."
+  - q: "What skills do you need to vibe code well?"
+    a: "Strong system design intuition (so you can guide the AI at the architectural level), ability to review code quickly, good prompt engineering, and knowing when to take manual control vs. delegate."
+  - q: "Does vibe coding work for large production codebases?"
+    a: "Yes, but it requires more structure. Large codebases need a good CLAUDE.md, well-scoped tasks, and clear quality gates. The bigger the codebase, the more important context management becomes."
+relatedSlugs:
+  - "ai-coding-workflow-repeatable"
+  - "ai-agent-guardrails"
+  - "ai-pair-programming-2026"
+  - "what-is-context-rot-in-ai-coding-agents"
+draft: false
+---
+
+<Tldr>
+- Vibe coding = guiding AI agents with intent, not implementation details
+- Real productivity gains for standard patterns; needs care for novel/critical code
+- Prerequisites: system design intuition + good context management + code review skills
+- Not a replacement for engineering judgment — an amplifier of it
+</Tldr>
+
+## What Is Vibe Coding?
+
+**Vibe coding is a software development style in which the developer describes intent to an AI agent in natural language, guides the output through review and feedback, and iterates quickly — rather than writing every line of code manually.** The "vibe" refers to working in a flow state where you focus on what to build and why, delegating the how to the AI.
+
+The term was popularized in early 2025 and has since become the dominant paradigm for how developers interact with tools like Claude Code, Cursor, and Windsurf. It's less a specific technique and more a shift in the developer's mental model: from implementer to product manager of an AI agent.
+
+Vibe coding is not the absence of engineering skill. The best vibe coders are often the most experienced engineers — they have the system design intuition to guide the AI at the right level of abstraction, and the code review skills to catch the 10% the agent gets wrong.
+
+## The Vibe Coding Workflow (Step by Step)
+
+Here's what effective vibe coding actually looks like in practice:
+
+1. **Define the task clearly at the right level.** Not "write a function" (too low-level) and not "build my entire app" (too vague). Something like: "Create a Stripe webhook handler that processes `payment_intent.succeeded` events, updates the user's subscription status in the database, and sends a confirmation email via Resend."
+
+2. **Provide context upfront.** Before the agent starts, give it the relevant constraints: "The database is PostgreSQL via Prisma. The email function is in `lib/email.ts`. Use our existing `Result(T, E)` error handling pattern." This context is what separates a 3-minute task from a 30-minute mess.
+
+3. **Let the agent run.** Resist the urge to interrupt every step. Let Claude Code read the files, write the implementation, run the tests, and fix failures autonomously. Only intervene if it goes significantly off-track.
+
+4. **Review the diff, not just the description.** The agent will tell you what it did. Read the actual diff. Look for: wrong patterns, missing error handling, broken tests, or subtle logic errors that sound fine in the summary.
+
+5. **Iterate with feedback.** "The webhook handler looks right, but you're not validating the Stripe signature. Add that before parsing the payload." The agent incorporates feedback and revises.
+
+6. **Capture decisions.** If the session established new patterns ("always validate Stripe signatures before payload parsing"), capture that in `CLAUDE.md` so the next session doesn't have to re-learn it.
+
+## Where Vibe Coding Works Well
+
+The productivity gains of vibe coding are real — but concentrated in specific task types:
+
+### CRUD and Standard Patterns
+
+Creating a REST endpoint, a database migration, a React component with standard state management, a Stripe integration — tasks with established patterns are where vibe coding is most effective. The AI has seen thousands of implementations; it produces correct, idiomatic code quickly.
+
+**Real example:** Adding a new API route in a Next.js App Router project, with input validation, database query, and error handling. This task takes an experienced developer 15–30 minutes manually. With a well-configured Claude Code and good `CLAUDE.md`, the same task takes 3–5 minutes of supervision.
+
+### Boilerplate and Scaffolding
+
+Setting up a new service, writing tests for existing functions, creating TypeScript types from a JSON schema, converting a class component to a function component — these are high-volume, low-novelty tasks perfectly suited to vibe coding.
+
+### Debugging Known Error Patterns
+
+Paste a stack trace to Claude Code and say "diagnose and fix." For common error patterns (type errors, import mismatches, failed Prisma migrations, auth redirect loops), the agent almost always gets it right on the first try.
+
+### Documentation and Comments
+
+Writing JSDoc, README sections, inline comments explaining complex logic — the AI's language generation is excellent here and the cost of a small error is low.
+
+<FigureImage src="https://images.unsplash.com/photo-1498050108023-c5249f4df085" alt="Developer working in focused flow state at a laptop — representing the vibe coding mental model of guiding AI rather than writing every line" width={1200} height={630} credit="Unsplash" />
+
+## Where Vibe Coding Requires More Care
+
+Not everything is a CRUD endpoint. Vibe coding breaks down in specific scenarios — knowing where adds as much value as knowing where it excels.
+
+### Novel Algorithms
+
+If you're designing a new graph traversal strategy, a custom rate-limiting algorithm, or a domain-specific optimization — vibe coding can give you a starting point, but you need to design the algorithm yourself and use the AI to implement it, not the reverse. The agent will produce something plausible but not necessarily optimal.
+
+### Security-Critical Code
+
+Authentication flows, cryptography, payment processing, authorization middleware — have a human security-aware engineer review everything the AI writes in these areas. The AI will write *correct-looking* code that may have subtle vulnerabilities. This is the area where "looks right in the summary" kills production systems.
+
+Specific patterns to watch for: JWT validation gaps, missing CSRF protection, incorrectly scoped SQL queries, unvalidated user input making it into database queries.
+
+### Performance-Critical Paths
+
+The AI optimizes for correctness and readability, not performance. Database queries missing indexes, N+1 query patterns in ORM code, React re-renders that could be memoized — these require your understanding of the system's performance characteristics.
+
+### Novel Architecture
+
+Designing a system's overall architecture — the service boundaries, the data model, the caching strategy, the deployment topology — is a job for the human engineer. Vibe coding helps you implement the architecture once designed; it doesn't replace architecture design.
+
+## The Skills That Make Vibe Coding Work
+
+Counterintuitively, the developers who benefit most from vibe coding are often the most experienced:
+
+### System Design Intuition
+
+You need to know what you want before you can describe it to the AI. A developer who doesn't understand data modeling will accept a wrong schema. A developer who does understands data modeling can direct the agent to the right one in one sentence.
+
+**Example:** "Use a join table for the many-to-many relationship between users and teams, with `created_at` and `role` columns on the join table." This instruction takes 5 seconds to write and saves 30 minutes of fixing a wrong schema.
+
+### Code Review Speed
+
+Vibe coding increases the throughput of code being generated. Your code review skill is what catches the 10% the agent gets wrong. Senior engineers who can spot a subtle bug in 30 seconds get far more value from vibe coding than developers who need 30 minutes to understand a diff.
+
+### Context Management
+
+The single biggest quality-of-life skill for vibe coding is knowing how to manage AI context. This means:
+- Writing a precise `CLAUDE.md` with project decisions
+- Scoping tasks to fit within session context limits
+- Recognizing when the agent has developed [context rot](/blog/what-is-context-rot-in-ai-coding-agents) and needs a context refresh
+
+Without context management, vibe coding sessions degrade — the agent starts generating generic code instead of project-specific code, and you spend more time correcting than the AI saves.
+
+### Knowing When to Take Manual Control
+
+Some tasks are faster to do yourself. A one-line variable rename doesn't need the AI. A subtle merge conflict resolution may be faster to do manually than to explain to the agent. Good vibe coders recognize these moments and switch modes fluidly.
+
+## Vibe Coding in a Production Codebase
+
+Vibe coding in a greenfield project is relatively forgiving. In a production codebase with existing patterns, existing tests, and real users — the stakes are higher and the discipline required is greater.
+
+**Key practices for production vibe coding:**
+
+1. **Invest in `CLAUDE.md` before starting.** A production codebase has dozens of non-obvious patterns and constraints. Document them before the first session, or the agent will generate code that violates them.
+
+2. **Never skip test verification.** Always explicitly ask the agent to run the test suite and fix failures. "Looks good" without test evidence is not good enough.
+
+3. **Review diffs before merging.** The agent can introduce subtle bugs that only appear in edge cases. Your PR review process should include the same rigor as human-written code — possibly more, because the AI is confident even when wrong.
+
+4. **Scope tasks to one feature at a time.** "Implement the new billing flow" is a project, not a task. Break it down: "First, write the Stripe checkout session creation. Run the tests. Then we'll do the webhook handler."
+
+5. **Capture new patterns immediately.** When the agent establishes a new convention during a session, capture it in `CLAUDE.md` before closing. This prevents the next session from re-inventing or contradicting it. Tools like [Context Keeper](/) automate this capture from session transcripts.
+
+<FigureImage src="https://images.unsplash.com/photo-1517048676732-d65bc937f952" alt="Team of developers collaborating around a screen reviewing code output — representing vibe coding in a team production environment" width={1200} height={630} credit="Unsplash" />
+
+## Vibe Coding vs Traditional Development
+
+| | Traditional development | Vibe coding |
+|---|---|---|
+| **Primary bottleneck** | Writing code | Reviewing and directing code |
+| **Time spent** | Implementation | Specification + review |
+| **Key skill** | Implementation speed | System design + code review |
+| **Context management** | Not needed | Critical |
+| **Best for** | Novel algorithms, security-critical, architecture | Standard patterns, boilerplate, refactors |
+| **Risk profile** | Risk proportional to developer skill | Risk of accepting subtle AI errors |
+
+Vibe coding doesn't replace engineering — it shifts which engineering skills are most important. Specification and review become the bottleneck; implementation becomes the fast lane.
+
+## A Repeatable Vibe Coding System
+
+The developers who get the most consistent results from vibe coding use a repeatable system, not ad-hoc prompting. A good system includes:
+
+1. **Project context file (`CLAUDE.md`)** — maintained and up-to-date
+2. **Task definition template** — a consistent way to frame tasks (tech stack + goal + constraints + acceptance criteria)
+3. **Review checklist** — what to look for in every AI-generated diff
+4. **Session boundary habits** — how to start and close sessions for context hygiene
+
+See our [Repeatable AI-Agent Coding Workflow](/blog/ai-coding-workflow-repeatable) for a complete implementation of this system.
+
+## Key Takeaways
+
+- Vibe coding = describing intent to AI agents; focusing on what and why, not how
+- Real productivity gains are concentrated in CRUD, boilerplate, debugging, and standard patterns
+- Requires more care for novel algorithms, security-critical code, and performance paths
+- The most valuable vibe coding skills: system design intuition, code review speed, context management
+- In production codebases: invest in `CLAUDE.md`, always run tests, never skip code review
+- Context rot is the biggest silent killer of vibe coding quality — manage it actively
+
+Vibe coding done well is a genuine multiplier on developer productivity. Done poorly — without context management, without code review, without engineering judgment — it's a fast lane to production incidents. The developers who master it treat the AI as a capable junior engineer, not an oracle.
+
+Related: [A Repeatable Workflow for AI-Agent-Driven Development](/blog/ai-coding-workflow-repeatable) · [Keeping AI Agents from Breaking Your Architecture](/blog/keeping-ai-agents-from-breaking-architecture) · [What Is Context Rot in AI Coding Agents](/blog/what-is-context-rot-in-ai-coding-agents)

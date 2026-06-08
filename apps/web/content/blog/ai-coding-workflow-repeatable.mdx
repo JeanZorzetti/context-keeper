@@ -1,0 +1,253 @@
+---
+title: "A Repeatable Workflow for AI-Agent-Driven Development"
+slug: "ai-coding-workflow-repeatable"
+description: "A proven, step-by-step workflow for shipping software with AI coding agents — from planning through testing, with context management at every stage."
+cluster: "Vibe Coding & Workflows"
+keywords: ["ai coding workflow", "ai agent development workflow", "repeatable ai workflow", "ai development process"]
+primaryKeyword: "ai coding workflow"
+author: "Context Keeper Team"
+datePublished: "2026-07-17"
+readingTime: 11
+heroImage:
+  src: "https://images.unsplash.com/photo-1611224923853-80b023f02d71"
+  alt: "Flowchart and process diagram on whiteboard representing a repeatable AI coding workflow"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "workflow process whiteboard diagram"
+faq:
+  - q: "What does a good AI-agent coding workflow look like?"
+    a: "A repeatable workflow includes: (1) brief the agent via CLAUDE.md, (2) decompose the feature into small tasks, (3) implement one task at a time with verification, (4) capture decisions, (5) update CLAUDE.md before closing the session."
+  - q: "How do I handle bugs that arise during AI-agent development?"
+    a: "Give the agent the error output directly. Include the stack trace, the relevant code, and what you expected to happen. Good agents can debug effectively with this context."
+  - q: "How do I maintain code quality with AI-generated code?"
+    a: "Run your test suite after every significant change. Use linters and type checkers. Review generated code the same way you'd review a junior developer's PR — quickly but attentively."
+relatedSlugs:
+  - "what-is-vibe-coding"
+  - "spec-driven-development-ai"
+  - "keeping-ai-agents-from-breaking-architecture"
+  - "how-to-persist-architectural-decisions"
+draft: false
+---
+
+<Tldr>
+- Step 1: Brief the agent (CLAUDE.md loaded)
+- Step 2: Decompose feature → small verifiable tasks
+- Step 3: Implement one task → verify → next task
+- Step 4: Capture decisions → update context before session ends
+</Tldr>
+
+## Why Most AI Coding Sessions Are Improvised (And Why That's a Problem)
+
+**Most developers use AI coding agents reactively: they hit a problem, ask the agent, try the suggestion, course-correct, repeat.** This ad-hoc approach works for simple tasks but breaks down for complex features — the agent loses the thread, architectural drift accumulates, and the session ends with code that works but doesn't fit the codebase.
+
+A repeatable workflow changes this. By structuring how you engage with AI agents — from task decomposition through verification and context capture — you get consistent quality output that fits your architecture, session after session.
+
+This guide walks through a proven 5-phase workflow that works for Claude Code, Cursor, and Cline.
+
+## Phase 1: Session Start — Brief the Agent (5 minutes)
+
+Every productive AI coding session starts with an explicit briefing, not just a task description.
+
+**Step 1.1: Ensure CLAUDE.md is current**
+
+Before starting, confirm your `CLAUDE.md` reflects the current state of the project. A 30-second check: when did you last update it? If it's been more than a week during active development, it may be stale.
+
+**Step 1.2: Load context explicitly**
+
+Start with a structured opening message — don't assume the agent has the right context even with `CLAUDE.md` in place:
+
+```
+Read CLAUDE.md.
+
+Today's session context:
+- We completed the Auth0 integration last session (auth.ts, middleware.ts — committed)
+- Currently: implementing the user profile API endpoint
+- Today's task: GET /api/user/profile — returns current user's data + subscription status
+
+Constraints:
+- Must use getSession() from @auth0/nextjs-auth0
+- Use prisma from @/lib/prisma
+- Return format: { data: UserProfile } or { error: string } with HTTP status
+- Need tests: happy path + unauthenticated case
+
+Verify you understand before starting.
+```
+
+The "Verify you understand before starting" prompt catches context gaps before they become implementation mistakes.
+
+**Step 1.3: Confirm the agent's understanding**
+
+If the agent's summary is wrong or incomplete, correct it before any code is written. This is the cheapest point to fix misunderstandings.
+
+## Phase 2: Task Decomposition (10 minutes)
+
+**Large tasks fail more often than small tasks.** The agent loses context partway through, makes inconsistent decisions, or implements parts that don't fit together.
+
+The principle: **decompose before implementing.** Break the feature into tasks small enough that each can be verified in isolation.
+
+**Good task decomposition example — User Profile Endpoint:**
+1. Define the TypeScript types for UserProfile
+2. Write the Prisma query to fetch user + subscription data
+3. Implement the route handler with auth check
+4. Write tests: happy path + unauthenticated case
+5. Add the endpoint to API documentation
+
+**Bad task decomposition (too large):**
+"Implement the user profile endpoint with auth, database query, and tests."
+
+Smaller tasks produce better code because:
+- Each task fits cleanly in the context window
+- Errors are caught at each step rather than discovered after everything is built
+- The agent can focus its full reasoning on one thing at a time
+
+Ask the agent to propose a decomposition before implementing: "Break this feature into 5–7 concrete tasks. List them before starting."
+
+<FigureImage src="https://images.unsplash.com/photo-1611224923853-80b023f02d71" alt="Flowchart on whiteboard representing a repeatable step-by-step AI agent coding workflow for feature development" width={1200} height={630} credit="Unsplash" />
+
+## Phase 3: Implementation — One Task at a Time with Verification
+
+**Implement tasks sequentially, verifying after each one.** Never let the agent move to the next task until the current one is confirmed correct.
+
+**The verification step:**
+After each task, run:
+1. Type check: `npm run typecheck` (or `tsc --noEmit`)
+2. Tests: `npm run test` (at least the tests related to the task)
+3. Manual check: does the code look right? Does it follow your patterns?
+
+If verification fails, correct before proceeding. Don't let errors accumulate across tasks.
+
+**Handling errors effectively:**
+
+When something breaks, give the agent the full error context:
+
+```
+Running the test gave this error:
+
+[paste full error output]
+
+The test expects:
+[paste test code]
+
+The implementation is:
+[paste implementation code]
+
+What's wrong and how do we fix it?
+```
+
+The agent debugs much more effectively with the full error, test, and implementation context than with a description of the problem.
+
+**Pattern: implement, verify, commit**
+
+After each verified task, commit. This creates a clean history that makes rolling back easy if later tasks go wrong:
+
+```bash
+git add apps/api/src/user/types.ts
+git commit -m "feat: add UserProfile type definition"
+```
+
+Small commits are underrated in AI-assisted development. They turn a complex multi-hour session into a series of safe steps.
+
+## Phase 4: Testing — Write Tests Alongside Code
+
+AI agents are excellent at writing tests when given clear specifications. The workflow:
+
+**4.1: Write the test file first (or ask the agent to)**
+
+For each new function or endpoint, create the test file before or alongside the implementation:
+
+```
+Write the test file for the GET /api/user/profile endpoint.
+
+Test cases to cover:
+1. Authenticated user with active subscription — returns UserProfile with subscription
+2. Authenticated user with no subscription — returns UserProfile with null subscription
+3. Unauthenticated request — returns 401
+
+Use Vitest. Mock: getSession (from @auth0/nextjs-auth0), prisma.user.findUnique.
+```
+
+**4.2: Confirm tests actually pass**
+
+Run `npm run test` after the agent writes tests. Don't assume tests are correct just because they compile. Watch for:
+- Tests that test the mock, not the implementation
+- Assertions that are too loose (checking that a field exists but not its value)
+- Missing edge cases
+
+**4.3: Check test coverage**
+
+For critical paths: `npm run test:coverage`. Aim for 80%+ coverage on new code — AI agents sometimes miss error branches.
+
+## Phase 5: Session End — Capture and Close
+
+**The most commonly skipped phase — and the one that determines the quality of your next session.**
+
+**5.1: Capture decisions made this session**
+
+Ask the agent to summarize decisions before closing:
+
+```
+Before we close: list all architectural decisions or patterns we established in this session.
+Format as: "Decided to X because Y. Rejected Z."
+```
+
+Review the list. Add any decisions not mentioned. These go into `CLAUDE.md`.
+
+**5.2: Update CLAUDE.md**
+
+Add new decisions to `CLAUDE.md`. Remove or update anything that was superseded. Commit:
+
+```bash
+git add CLAUDE.md
+git commit -m "docs: update CLAUDE.md with user profile API decisions"
+```
+
+**5.3: Write a state brief for the next session**
+
+One paragraph, for yourself and the agent:
+
+```
+Completed: GET /api/user/profile (committed as 3 commits — see git log).
+In progress: nothing.
+Next: POST /api/user/profile/update — update display name and preferences.
+Blockers: none.
+```
+
+Paste this at the start of the next session alongside "Read CLAUDE.md."
+
+<FigureImage src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40" alt="Developer completing a workflow checklist representing session-end context capture and handoff in AI coding workflows" width={1200} height={630} credit="Unsplash" />
+
+## Adapting the Workflow to Session Length
+
+**Short session (30–60 minutes):** Skip the formal decomposition. Still brief the agent and capture decisions at the end. For one-task sessions, the overhead is mainly the opening and closing structure.
+
+**Long session (4+ hours):** Use `/compact` after 2 hours to compress conversation history and reset the attention baseline. Use `/clear` between major features. Run a mini-capture at the end of each major feature rather than waiting for session close.
+
+**Multi-session feature:** At the start of sessions 2+, the state brief from the previous session is the first message. The agent recovers context in seconds rather than minutes.
+
+## Common Mistakes in AI Coding Workflows
+
+**Mistake 1: Giving the agent a vague task.**
+"Make the user profile work" → the agent invents requirements.
+"Implement GET /api/user/profile returning UserProfile type with auth check" → agent builds exactly what you need.
+
+**Mistake 2: Not verifying after each task.**
+Errors in step 2 become much harder to find when you're in step 6. Type check and test after every task, not at the end.
+
+**Mistake 3: Skipping the session close.**
+The 10 minutes spent updating `CLAUDE.md` and writing a state brief saves 20 minutes at the start of the next session. The math is clear; the habit is hard.
+
+**Mistake 4: Letting the agent choose the implementation approach.**
+For decisions that matter architecturally — error handling, data access patterns, auth approach — specify them explicitly. Don't let the agent default to whatever's common in its training data.
+
+## Key Takeaways
+
+- Brief → Decompose → Implement (one task with verification) → Test → Capture: the 5-phase workflow
+- Start every session with an explicit briefing message that loads context and specifies constraints
+- Decompose features into 5–7 small tasks before implementing any of them
+- Verify after every task: typecheck + relevant tests + visual review
+- Give the agent full error context when debugging: full error, test code, implementation code
+- Commit after each verified task — creates rollback points and a clean history
+- Close every session with decision capture and a state brief for next time
+
+Related: [What Is Vibe Coding (and How to Do It Well)](/blog/what-is-vibe-coding) · [Spec-Driven Development with AI Agents](/blog/spec-driven-development-ai) · [How to Persist Architectural Decisions Across AI Sessions](/blog/how-to-persist-architectural-decisions)

@@ -1,0 +1,260 @@
+---
+title: "MCP Server Examples and Use Cases: What You Can Build"
+slug: "mcp-server-examples-use-cases"
+description: "Real-world MCP server examples and use cases — from database access to browser automation. Inspiration and implementation notes for building powerful AI tool integrations."
+cluster: "MCP & Technical Deep-Dives"
+keywords: ["mcp server examples", "mcp use cases", "mcp server ideas", "what to build with mcp"]
+primaryKeyword: "mcp server examples"
+author: "Context Keeper Team"
+datePublished: "2026-08-03"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1551288049-bebda4e38f71"
+  alt: "Gallery of different tool icons representing diverse MCP server use cases and examples"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "tools collection icons gallery"
+faq:
+  - q: "What are the most useful MCP servers available today?"
+    a: "Top picks: filesystem (extended file access beyond project root), github (manage PRs and issues), postgres/sqlite (query databases), brave-search (web search without leaving Claude Code), puppeteer (browser automation), and fetch (HTTP requests to any API)."
+  - q: "Where can I find existing MCP servers to install?"
+    a: "The official MCP server list is at github.com/modelcontextprotocol/servers. Community directories include mcp.so and awesome-mcp-servers on GitHub."
+  - q: "What's the best MCP server for a full-stack developer?"
+    a: "For full-stack work: filesystem + github + postgres + fetch covers most needs. Add puppeteer if you do frontend testing. The combination lets Claude Code manage files, interact with GitHub, query your database, and make API calls."
+relatedSlugs:
+  - "model-context-protocol-complete-guide"
+  - "how-to-build-mcp-server"
+  - "claude-code-mcp-servers"
+  - "connecting-mcp-servers-claude-cursor-cline"
+draft: false
+---
+
+<Tldr>
+- Most useful: filesystem, github, postgres, brave-search, puppeteer, fetch
+- Find servers: github.com/modelcontextprotocol/servers + mcp.so
+- Full-stack starter pack: filesystem + github + postgres + fetch
+- Build custom: anything with an API or SDK can become an MCP server
+</Tldr>
+
+## What MCP Servers Make Possible
+
+**MCP (Model Context Protocol) servers give AI coding agents access to capabilities beyond their built-in tools — databases, external APIs, browser automation, file system operations, and any service with an SDK or HTTP interface.** Understanding what's already available and what you can build helps you design AI coding workflows that are genuinely powerful rather than just convenient.
+
+This article covers the most useful existing MCP servers, their real-world use cases, and examples for building custom servers for domain-specific needs.
+
+## The Official MCP Server Repository
+
+The [official MCP servers repository](https://github.com/modelcontextprotocol/servers) maintained by Anthropic contains reference implementations for the most common integration needs. As of 2026, the most useful for developers:
+
+| Server | What It Does | Best For |
+|---|---|---|
+| `filesystem` | Extended file read/write beyond project root | Cross-project file access |
+| `github` | Create/merge PRs, list issues, manage branches | Full GitHub workflow in Claude Code |
+| `postgres` | Query PostgreSQL databases directly | Database-driven development |
+| `sqlite` | Query SQLite databases | Local data, testing, scripts |
+| `brave-search` | Web search without leaving the agent | Researching APIs, docs, solutions |
+| `puppeteer` | Browser automation and screenshots | Frontend testing, web scraping |
+| `fetch` | HTTP requests to any URL | External API calls |
+| `memory` | Persistent key-value memory across sessions | Simple cross-session state |
+
+Find these at `github.com/modelcontextprotocol/servers`. Community directories with more options: mcp.so and awesome-mcp-servers on GitHub.
+
+## Use Case 1: Database-Driven Development
+
+**The problem:** When building database-backed features, you constantly context-switch between your editor, a database GUI, and the terminal. Claude Code can't query your database directly with its built-in tools.
+
+**The solution:** The `postgres` or `sqlite` MCP server lets Claude Code query your database directly during development.
+
+**Setup for postgres:**
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_URL": "postgresql://localhost/myapp_dev"
+      }
+    }
+  }
+}
+```
+
+**What it enables:**
+- "Show me all users created in the last 7 days" → Claude queries directly
+- "Write a migration that adds an index on the email column" → Claude checks current schema first
+- "Debug why this query is slow" → Claude runs EXPLAIN ANALYZE
+- "Seed the database with test data matching this schema" → Claude reads the schema, generates inserts
+
+Claude can see the actual data and schema rather than inferring from Prisma files — it makes database-aware decisions that are structurally correct.
+
+<FigureImage src="https://images.unsplash.com/photo-1551288049-bebda4e38f71" alt="Database and code interface showing MCP server integration enabling AI agents to query databases directly during development" width={1200} height={630} credit="Unsplash" />
+
+## Use Case 2: GitHub Workflow Integration
+
+**The problem:** Creating PRs, reviewing issues, and managing branches requires leaving the terminal and switching to GitHub — breaking the development flow.
+
+**The solution:** The `github` MCP server exposes GitHub's API as tools Claude Code can call.
+
+**Setup:**
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+      }
+    }
+  }
+}
+```
+
+**What it enables:**
+- "Create a PR for this feature branch with a description of the changes" → Claude reads the diff, writes the PR
+- "List all open issues labeled 'bug'" → Claude surfaces them directly in the session
+- "Check if CI passed on the latest commit" → Claude queries the GitHub Actions status
+- "Assign this issue to me" → Claude calls the GitHub API
+
+This turns Claude Code into a full development workflow agent, not just a code editor.
+
+## Use Case 3: Web Search for Developers
+
+**The problem:** Developers constantly search for API documentation, error solutions, and library examples. Context switching to a browser breaks focus.
+
+**The solution:** Brave Search MCP server brings web search directly into the agent.
+
+**Setup:**
+
+```json
+{
+  "mcpServers": {
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+**What it enables:**
+- "Search for the latest Stripe webhook signature verification docs" → Claude searches and summarizes
+- "Find the correct syntax for `Prisma.findMany` with a nested relation filter" → Real documentation, not training data
+- "What's the current rate limit for the GitHub API?" → Current information, not potentially-stale training knowledge
+- Researching an unfamiliar library before implementing a feature
+
+Brave Search integration is particularly valuable for models with knowledge cutoffs — web search gives the agent current information.
+
+## Use Case 4: Browser Automation and Frontend Testing
+
+**The problem:** Testing frontend changes, taking screenshots for documentation, or scraping data from web pages requires context-switching to browser tools or writing Playwright scripts.
+
+**The solution:** The `puppeteer` MCP server gives Claude Code headless browser capabilities.
+
+**Setup:**
+
+```json
+{
+  "mcpServers": {
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    }
+  }
+}
+```
+
+**What it enables:**
+- "Take a screenshot of the checkout flow at localhost:3000" → Claude navigates and screenshots
+- "Check if the login form works correctly" → Claude interacts with the form and reports results
+- "Scrape the latest pricing from this competitor page" → Claude fetches and parses structured data
+- "Test the mobile viewport of this component" → Claude resizes and screenshots
+
+<FigureImage src="https://images.unsplash.com/photo-1520085601670-ee14aa5fa3e8" alt="Browser automation screenshot showing AI-driven frontend testing workflow using MCP puppeteer server" width={1200} height={630} credit="Unsplash" />
+
+## Use Case 5: Context Keeper as an MCP Example
+
+For developers building AI-aware products, an MCP server can expose your product's own data and functionality to AI agents.
+
+[Context Keeper](/) is itself an example: an MCP server that exposes architectural decisions from your project as resources, and tools for capturing and querying them. When connected to Claude Code, it gives the agent direct access to your decision history — without needing to read `CLAUDE.md` manually.
+
+This pattern — exposing your product's data as an MCP resource — is how any developer tool can gain first-class AI integration without building its own LLM.
+
+## Building Custom MCP Servers: What's Possible
+
+Anything with an HTTP API, SDK, or command-line interface can become an MCP server. Real-world examples built by developers:
+
+**Internal tooling:**
+- Deploy pipelines (trigger a deploy, check deploy status)
+- Feature flag management (list flags, toggle, view rollout)
+- Analytics queries (send a predefined query, get results)
+- Error tracking (list recent Sentry errors, mark as resolved)
+
+**Development utilities:**
+- Test runner with coverage report parsing
+- Code coverage threshold enforcement
+- Translation key management for i18n
+- Schema registry for API contract management
+
+**Team operations:**
+- Slack message lookup and search
+- Linear/Jira ticket creation and management
+- Confluence page reading and writing
+- On-call rotation query
+
+**The general pattern:** if your team does a recurring task that requires context about the current code (like creating a well-described issue, checking if a test passed, or verifying a feature flag is set), it's a good candidate for an MCP tool.
+
+For building your own, see [How to Build an MCP Server: A Step-by-Step Guide](/blog/how-to-build-mcp-server).
+
+## Combining Multiple MCP Servers
+
+The real power comes from combining servers. A full-stack developer setup might include:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": { "...": "..." },
+    "github": { "...": "...", "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "..." } },
+    "postgres": { "...": "...", "env": { "POSTGRES_URL": "..." } },
+    "brave-search": { "...": "...", "env": { "BRAVE_API_KEY": "..." } }
+  }
+}
+```
+
+With this stack, Claude Code can:
+1. Search for the correct API syntax (Brave)
+2. Read related files across the project (filesystem)
+3. Check the current database schema (postgres)
+4. Implement the feature
+5. Create a PR describing the changes (github)
+
+All in a single conversation, without the developer leaving the terminal.
+
+## Finding More MCP Servers
+
+The ecosystem is growing rapidly as of 2026:
+- **Official servers:** github.com/modelcontextprotocol/servers
+- **mcp.so:** Community directory with search and ratings
+- **awesome-mcp-servers:** Curated GitHub list with categories
+- **GitHub search:** Searching "mcp-server" on GitHub finds hundreds of community implementations
+
+Before building a custom server, check if someone has already built what you need — the community has covered most common integration patterns.
+
+## Key Takeaways
+
+- MCP servers extend AI coding agents with capabilities beyond built-in tools: database access, GitHub integration, web search, browser automation, and more
+- Most valuable for developers: filesystem, github, postgres, brave-search, puppeteer, fetch
+- Database MCP servers let Claude Code make structurally correct decisions by seeing actual schema and data
+- GitHub MCP server enables full workflow integration: PR creation, issue management, CI status
+- Browser automation (puppeteer) enables frontend testing and screenshot capture without leaving the terminal
+- Anything with an HTTP API or SDK can become a custom MCP server
+- Combining multiple servers creates genuinely powerful AI coding workflows
+
+Related: [Model Context Protocol (MCP): The Complete Developer Guide](/blog/model-context-protocol-complete-guide) · [How to Build an MCP Server: Step-by-Step](/blog/how-to-build-mcp-server) · [Connecting MCP Servers to Claude Code, Cursor & Cline](/blog/connecting-mcp-servers-claude-cursor-cline)

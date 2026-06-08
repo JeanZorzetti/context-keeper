@@ -1,0 +1,199 @@
+---
+title: "How to Reduce Claude API Token Costs in Claude Code"
+slug: "reduce-claude-api-token-costs"
+description: "Heavy Claude Code users spend hundreds per month on API tokens. Here are the most effective strategies to cut token costs without reducing quality."
+cluster: "Claude Code"
+keywords: ["claude api cost reduction", "reduce claude tokens", "claude code cost", "claude api pricing optimize"]
+primaryKeyword: "claude api cost reduction"
+author: "Context Keeper Team"
+datePublished: "2026-06-29"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e"
+  alt: "Dollar bills and code on screen representing Claude API cost reduction strategies"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "money savings cost reduction"
+faq:
+  - q: "How much do developers typically spend on Claude API for coding?"
+    a: "Active AI-coding users typically spend $50–500/month on Claude API, with power users exceeding $1,000/month. Context rot is a major contributor — redundant context-setting can account for 30–40% of total spend."
+  - q: "What's the single best way to reduce Claude API costs?"
+    a: "Fix context rot. A concise, accurate CLAUDE.md eliminates the need to re-explain your architecture at the start of each session, which is often the largest source of redundant token usage."
+  - q: "Does using Haiku instead of Sonnet save money?"
+    a: "Yes — Claude Haiku is significantly cheaper per token. Use it for simpler tasks (explanations, summaries, short edits) and reserve Sonnet/Opus for complex multi-step implementations."
+  - q: "Does prompt caching help reduce Claude costs?"
+    a: "Yes. Claude's prompt caching reduces costs on repeated context (like CLAUDE.md content that's loaded every session). Context Keeper optimizes cache hit rates by structuring your CLAUDE.md for maximal caching."
+relatedSlugs:
+  - "hidden-cost-re-explaining-context"
+  - "claude-code-best-practices"
+  - "context-compression-techniques"
+  - "claude-code-vs-api"
+draft: false
+---
+
+<Tldr>
+- Fix context rot first — redundant re-explanation is your biggest cost driver
+- Use model tiering: Haiku for simple tasks, Sonnet for complex ones
+- Leverage prompt caching for repeated context (CLAUDE.md)
+- Track `/cost` in Claude Code to find expensive patterns
+</Tldr>
+
+## The Real Cost of Claude Code
+
+Active Claude Code users typically spend $50–500/month in Anthropic API costs. Power users doing large-scale refactors or multi-agent workflows can exceed $1,000/month. These costs are real, but most of them are avoidable.
+
+Before optimizing, understand what consumes tokens in a Claude Code session:
+
+1. **Context you send** — every file Claude Code reads, every message in the conversation history, every tool call output
+2. **Context Claude sends back** — every response, every reasoning step, every file edit
+3. **Redundant context** — re-sending the same information the agent already "knew" in a previous session
+
+The third category — redundant context — is often the largest and most invisible cost driver.
+
+## The Biggest Cost: Context Rot
+
+**[Context rot](/blog/what-is-context-rot-in-ai-coding-agents) is when your AI agent forgets architectural decisions between sessions, forcing you to re-explain them.** Every re-explanation costs tokens. A developer who spends 5 minutes re-establishing context at the start of each of 5 daily sessions is spending 25 minutes per day on redundant token consumption.
+
+At Claude Sonnet 4.6 pricing (approximately $3/million input tokens as of 2026), a 2,000-token context re-establishment costs about $0.006 — negligible per session, but $30–150/month at scale across many sessions.
+
+More significantly: context rot causes the agent to read files it already read, propose alternatives it already considered, and generate code that has to be corrected — multiplying the token cost of each task.
+
+**Fix:** Write a comprehensive `CLAUDE.md`. The tokens you invest in `CLAUDE.md` (read once per session) are far cheaper than re-explaining the same context repeatedly. See [How to Write a Great CLAUDE.md](/blog/how-to-write-a-great-claude-md) for a template and examples.
+
+## Strategy 1: Prompt Caching
+
+Anthropic's prompt caching reduces costs when the same content appears repeatedly in requests. Content that's been in the cache within the last 5 minutes costs roughly 10% of the standard input price.
+
+**What gets cached automatically:** The beginning of your conversation (including `CLAUDE.md` content) is a prime caching candidate because it appears in every request in a session.
+
+**How to optimize for caching:**
+- Keep `CLAUDE.md` stable — frequent changes break cache hits
+- Load context at the start of a session and don't shuffle it around
+- Structure your system prompts and context to be consistent across requests
+
+Context Keeper optimizes cache hit rates by keeping your `CLAUDE.md` structured and stable — decisions are added at the end, not reshuffled, so the beginning of the file (most frequently cached) stays consistent.
+
+## Strategy 2: Model Tiering
+
+Not every task needs Claude Opus. Using the right model for the right task is one of the highest-leverage cost optimizations.
+
+| Task type | Recommended model | Why |
+|---|---|---|
+| Complex multi-step implementation | Claude Sonnet 4.6 | Best quality/cost balance for coding |
+| Architectural planning, novel problems | Claude Opus 4.8 | Worth the premium for hard problems |
+| Simple edits, explanations, docs | Claude Haiku 4.5 | Much cheaper; quality sufficient |
+| Automated/background tasks | Claude Haiku 4.5 | Lowest cost at scale |
+
+Switch models mid-session with `/model`:
+
+```
+/model haiku    # Switch to Haiku for a simple explanation task
+/model sonnet   # Back to Sonnet for implementation
+```
+
+A practical workflow: start with Sonnet, switch to Haiku when you're asking for explanations or summaries, switch back for implementation.
+
+Rough pricing comparison (as of 2026): Haiku is approximately 25x cheaper than Opus per token. For simple tasks, using Haiku instead of Opus saves significant money with minimal quality difference.
+
+## Strategy 3: Narrow Scope — The Largest Single Lever
+
+The most expensive Claude Code pattern is giving it a vague, large-scope task that requires reading many files to orient itself:
+
+**Expensive:** "Refactor the auth system to be more maintainable."
+
+Claude Code reads every auth-related file, reasons about the whole system, generates a plan, asks questions, iterates. This can easily cost $5–10 in a single session.
+
+**Cheap:** "In `middleware/auth.ts`, extract the session validation logic into a separate `validateSession(req)` function and update the two call sites in `app/api/users/route.ts` and `app/api/projects/route.ts`."
+
+This directs Claude Code to specific files with a specific, bounded change. Total tokens: a fraction of the vague version.
+
+**Rule of thumb:** Every file Claude Code reads costs tokens. Reference specific files by path rather than letting the agent explore.
+
+## Strategy 4: Use `/clear` and `/compact` Aggressively
+
+Session context accumulates. After 2 hours of work, you may have 80,000 tokens of conversation history in the context window — and most of it is irrelevant to your next task.
+
+**`/clear`** — resets conversation history completely. The agent starts fresh, re-reading only `CLAUDE.md`. Use this between unrelated tasks.
+
+**`/compact`** — summarizes the conversation history into a condensed form. Use this when you want to continue the same session but reduce the token overhead of the full history.
+
+Track your costs with `/cost` to know when compression is worth it:
+
+```
+/cost
+```
+
+This shows tokens consumed and estimated cost for the current session. If you're at $5 and the session is half over, `/compact` can cut the remaining cost significantly.
+
+## Strategy 5: `.claudeignore` — Prevent Accidental Expensive Reads
+
+By default, Claude Code can read any file in your project. Some files are massive and expensive to include in context:
+
+- `package-lock.json` / `yarn.lock` — thousands of lines, rarely useful to the agent
+- Build artifacts in `dist/`, `.next/`, `node_modules/`
+- Large binary files
+- Log files, databases
+
+Create a `.claudeignore` file:
+
+```
+package-lock.json
+yarn.lock
+.next/
+dist/
+node_modules/
+*.log
+*.sqlite
+*.db
+coverage/
+```
+
+This prevents Claude Code from reading these files even if they seem relevant, keeping the context window focused on actual source code.
+
+## Strategy 6: Reuse Context Across Sessions With Good CLAUDE.md
+
+The amortization principle: if your `CLAUDE.md` costs 1,000 tokens to read per session, but saves 5,000 tokens of re-explanation, it has a 5x ROI per session, compounding with every session.
+
+A developer with 10 sessions per day and a 5,000-token per-session context savings from a good `CLAUDE.md` saves 50,000 tokens per day — approximately $0.15/day at Sonnet pricing, or $4.50/month. Small but meaningful at scale.
+
+More importantly, a good `CLAUDE.md` prevents the expensive quality-failure loop: agent proposes wrong approach → you correct → agent re-reads files → generates corrected version. Each loop iteration can cost $0.50–$2.00. A `CLAUDE.md` that pre-empts the wrong approach saves more than just re-explanation tokens.
+
+<FigureImage src="https://images.unsplash.com/photo-1554224155-6726b3ff858f" alt="Financial graph showing cost reduction over time — representing Claude API token cost optimization strategies" width={1200} height={630} credit="Unsplash" />
+
+## Monitoring Costs in Real-Time
+
+Track session costs with built-in Claude Code commands:
+
+```
+/status    # Current session stats including token count
+/cost      # Detailed cost breakdown for the session
+```
+
+**When to act on cost signals:**
+- Session at $3+ and the task isn't done → use `/compact` before continuing
+- Session at $8+ → consider closing and starting fresh with explicit context in the next session
+- Daily API spend trending over your budget → audit which task types are most expensive, then narrow scope or switch models
+
+## The ROI of Context Management Tools
+
+The highest-ROI cost reduction is the one that prevents unnecessary tokens at the source rather than reducing them after the fact.
+
+Tools like [Context Keeper](/) track architectural decisions automatically and keep your `CLAUDE.md` accurate and concise. An accurate `CLAUDE.md` prevents both the explicit re-explanation cost and the implicit quality-failure-loop cost.
+
+The math: if Context Keeper prevents one 30-minute quality-failure loop per week (agent proposes wrong approach, you correct, it re-does), the time saving alone justifies the cost. The token saving is a bonus.
+
+## Key Takeaways
+
+- Context rot is the largest cost driver — fix it with a comprehensive, current `CLAUDE.md`
+- Prompt caching reduces costs when the same context appears repeatedly — keep `CLAUDE.md` stable
+- Model tiering: Haiku for simple tasks, Sonnet for implementation, Opus for hard problems only
+- Narrow task scope drastically — reference specific files, not directories or whole systems
+- Use `/clear` between unrelated tasks to prevent context accumulation
+- Use `/compact` in long sessions when the history becomes expensive relative to its value
+- Use `.claudeignore` to prevent expensive reads of lock files, build artifacts, and logs
+- Monitor costs with `/cost` and `/status` — act when you see sessions trending expensive
+
+Token costs are manageable. The key insight is that most cost reduction comes from better context management, not from using a cheaper model on the same bad workflow.
+
+Related: [Hidden Cost of Re-Explaining Context to AI Agents](/blog/hidden-cost-re-explaining-context) · [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices) · [Context Compression Techniques for Long Agent Sessions](/blog/context-compression-techniques)

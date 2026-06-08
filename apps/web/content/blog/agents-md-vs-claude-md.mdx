@@ -1,0 +1,220 @@
+---
+title: "AGENTS.md vs CLAUDE.md: The AI Agent Instruction File Standard"
+slug: "agents-md-vs-claude-md"
+description: "AGENTS.md and CLAUDE.md serve similar purposes but for different tools. Here's how they differ, which to use, and how to maintain both without duplication."
+cluster: "Context Rot & AI Agent Memory"
+keywords: ["agents.md", "agents.md vs claude.md", "ai agent instruction file", "cursor rules vs claude md"]
+primaryKeyword: "agents.md"
+author: "Context Keeper Team"
+datePublished: "2026-06-19"
+readingTime: 7
+heroImage:
+  src: "https://images.unsplash.com/photo-1618477388954-7852f32655ec"
+  alt: "Two document files side by side comparing AGENTS.md and CLAUDE.md instruction formats"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "two documents comparison files"
+faq:
+  - q: "What is an AGENTS.md file?"
+    a: "AGENTS.md is a tool-agnostic context file format that multiple AI coding tools can read. It was introduced as a standard for developers who use more than one AI agent and want a single source of truth for project context."
+  - q: "Should I use CLAUDE.md or AGENTS.md?"
+    a: "If you use only Claude Code, CLAUDE.md is the most direct option. If you use multiple tools (Claude Code + Cursor + Cline), AGENTS.md gives you a single file that all tools respect."
+  - q: "Can I have both CLAUDE.md and AGENTS.md?"
+    a: "Yes. Many developers use AGENTS.md for shared, tool-agnostic context and CLAUDE.md for Claude-specific instructions. Context Keeper can manage both, keeping them in sync."
+relatedSlugs:
+  - "what-is-a-claude-md-file"
+  - "how-to-write-a-great-claude-md"
+  - "share-context-across-cursor-claude-code-cline"
+  - "standardizing-ai-agent-setup-team"
+draft: false
+---
+
+<Tldr>
+- CLAUDE.md = Claude Code specific; read at session start
+- AGENTS.md = multi-tool standard; works with Cursor, Cline, Windsurf
+- For multi-tool workflows: use AGENTS.md as the source of truth
+- Context Keeper syncs both automatically
+</Tldr>
+
+## The Two Context File Standards for AI Coding Agents
+
+**AGENTS.md and CLAUDE.md are both plain Markdown files designed to give AI coding agents persistent context about your project — but they differ in scope, tooling support, and use case.** Understanding the difference helps you choose the right approach for your workflow, especially if you use multiple AI coding tools.
+
+The short version: `CLAUDE.md` is Claude Code's specific convention. `AGENTS.md` is a broader standard designed to work across multiple tools. Both solve the same underlying problem — [context rot](/blog/what-is-context-rot-in-ai-coding-agents) — through the same mechanism: a file the agent reads at session start.
+
+## What Is CLAUDE.md?
+
+`CLAUDE.md` is the context file format native to Claude Code, Anthropic's AI coding CLI. When you run Claude Code in a project directory, it automatically reads any `CLAUDE.md` file in the current directory and parent directories before the first message of every session.
+
+**Scope:** Claude Code sessions only.
+
+**How it works:** Claude Code reads `CLAUDE.md` at session start and loads its content into the context window. Everything in the file is available to the agent before you type your first instruction.
+
+**What to put in it:** Architectural decisions, coding patterns, tech stack with versions, commands, and explicit rejections — the things you'd otherwise re-explain at the start of every session.
+
+See [What Is a CLAUDE.md File and Why It Matters](/blog/what-is-a-claude-md-file) for the full guide to structure and content.
+
+## What Is AGENTS.md?
+
+`AGENTS.md` is a tool-agnostic context file format that multiple AI coding tools have adopted as a convention for reading project-level context. It was developed as the ecosystem of AI coding tools grew and developers found themselves maintaining separate context files for each tool they used.
+
+**Scope:** Multiple tools — Claude Code, Cursor, Cline, and others that support the AGENTS.md convention.
+
+**How it works:** Each participating tool reads `AGENTS.md` at session start alongside their own tool-specific file. The content is loaded as project context.
+
+**What to put in it:** The same categories as CLAUDE.md — stack, architecture, patterns, commands — but written at a tool-agnostic level. Tool-specific instructions go in each tool's own file.
+
+## When Each Is Appropriate
+
+The choice between the two depends primarily on how many AI coding tools you use:
+
+| Scenario | Recommendation |
+|---|---|
+| Claude Code only | CLAUDE.md — most direct integration |
+| Cursor only | .cursorrules or AGENTS.md |
+| Multiple tools (Claude + Cursor + Cline) | AGENTS.md as source of truth |
+| Team with mixed tool preferences | AGENTS.md for shared context |
+| New project just starting | Start with CLAUDE.md; migrate to AGENTS.md if you add tools |
+
+<FigureImage src="https://images.unsplash.com/photo-1618477388954-7852f32655ec" alt="Two document files side by side on a desk comparing AGENTS.md and CLAUDE.md instruction file formats for AI coding tools" width={1200} height={630} credit="Unsplash" />
+
+## The Multi-Tool Context Problem
+
+If you use Claude Code for exploration and architecture, Cursor for day-to-day editing, and Cline for automated testing workflows, you have three AI tools — each potentially operating with different project context.
+
+Without a unified approach:
+- Your Claude Code sessions know your Auth0 decision (you wrote it in `CLAUDE.md`)
+- Your Cursor sessions don't (`.cursorrules` is different)
+- Cline operates from its Memory Bank (also different)
+
+Three tools, three context stores, inevitable drift. This is where `AGENTS.md` solves a real problem.
+
+## The AGENTS.md Architecture: Hub and Spoke
+
+The most effective multi-tool setup uses `AGENTS.md` as the shared source of truth, with each tool's specific file extending it:
+
+```
+AGENTS.md          ← shared foundation (70% of the content)
+CLAUDE.md          ← Claude-specific additions (hooks, MCP config, Claude-only patterns)
+.cursorrules       ← Cursor-specific additions (UI patterns, editor behavior)
+.clinerules        ← Cline-specific additions (automation behavior)
+```
+
+The `CLAUDE.md` in this setup often starts with a reference to `AGENTS.md`:
+
+```md
+# Claude Code Context
+
+<!-- Core project context: see AGENTS.md -->
+
+## Claude Code-Specific Settings
+- MCP servers: filesystem (~/projects), github
+- Pre-commit hook: runs typecheck + tests
+- Auto-compact: enable at 80% context usage
+
+## Claude-Specific Patterns
+[anything that only applies to Claude Code interactions]
+```
+
+And `AGENTS.md` contains everything that's universally true:
+
+```md
+# Project Context
+
+## Stack
+- Next.js 15.3 App Router, TypeScript 5.8 strict, PostgreSQL via Prisma 7
+- Auth: Auth0 v3 — NOT NextAuth
+- Styling: Tailwind 3.4
+
+## Architecture
+- API: route handlers in app/api/ — NOT tRPC
+- DB: Prisma only — no raw SQL
+- Errors: return { error: "message" } — do not throw
+
+## Commands
+- Dev: npm run dev (port 3000)
+- Test: npm run test
+- Build: npm run build
+```
+
+This structure gives every tool access to the shared context while allowing tool-specific additions without duplication.
+
+## Key Differences Side by Side
+
+| Dimension | CLAUDE.md | AGENTS.md |
+|---|---|---|
+| Native tool | Claude Code | Multi-tool standard |
+| Tool support | Claude Code only | Claude Code, Cursor, Cline, Windsurf |
+| Location | Project root | Project root |
+| Format | Markdown | Markdown |
+| Version control | Yes | Yes |
+| Team sharing | Yes | Yes |
+| Claude-specific content | Yes | No (keep tool-agnostic) |
+| Use case | Single-tool workflow | Multi-tool workflow |
+
+## Format: Are They Different?
+
+No — both are plain Markdown files. There's no schema difference between `CLAUDE.md` and `AGENTS.md`. The content structure is the same. The only meaningful difference is the filename and which tools read each file by convention.
+
+This means migrating from one to the other is trivial:
+1. Rename `CLAUDE.md` to `AGENTS.md`
+2. Create a new `CLAUDE.md` that adds Claude-specific content
+3. Commit both
+
+Or in reverse — if you're stepping back to Claude Code-only, rename `AGENTS.md` to `CLAUDE.md` and consolidate.
+
+## What to Put in AGENTS.md (vs Tool-Specific Files)
+
+**Goes in AGENTS.md (universal):**
+- Tech stack and versions
+- Architectural decisions that affect all tools ("use Prisma, not raw SQL")
+- Patterns that are universal (like the API response shape used everywhere)
+- Development commands
+- Explicit rejections with reasons
+
+**Goes in CLAUDE.md only:**
+- Claude Code hooks configuration
+- MCP server setup
+- Claude-specific slash command references
+- Claude-only behavioral instructions
+
+**Goes in .cursorrules only:**
+- Cursor-specific UI and editor behavior preferences
+- Cursor Tab context preferences
+- Cursor-specific pattern instructions
+
+<FigureImage src="https://images.unsplash.com/photo-1499750310107-5fef28a66643" alt="Developer working across multiple screens with different AI coding tools, representing multi-tool context management with AGENTS.md" width={1200} height={630} credit="Unsplash" />
+
+## Keeping Both Files in Sync
+
+The main challenge of the hub-and-spoke approach is keeping `AGENTS.md` current as the project evolves. New decisions made in a Claude Code session need to land in `AGENTS.md` (not just `CLAUDE.md`) to benefit all tools.
+
+**Manual sync:** Review `AGENTS.md` when you update `CLAUDE.md`. If a new decision is tool-agnostic (it is, 90% of the time), put it in `AGENTS.md`. If it's Claude-specific, put it only in `CLAUDE.md`.
+
+**Automatic sync:** [Context Keeper](/) can manage both files — extracting decisions from Claude Code sessions and writing them to the appropriate file based on whether they're tool-agnostic or Claude-specific.
+
+The alternative — maintaining `CLAUDE.md` and letting `AGENTS.md` drift — eventually produces the same fragmentation as having no shared context file at all.
+
+## The Team Dimension
+
+For teams, `AGENTS.md` has a clear advantage over tool-specific files: it's the one context file that every developer and every AI tool reads, regardless of which agent they prefer.
+
+A shared `AGENTS.md` committed to version control means:
+- The junior developer using Cursor has the same project context as the senior developer using Claude Code
+- New team members get the project context automatically on first clone
+- PR reviews can confirm whether `AGENTS.md` was updated when architecture changed
+
+For teams specifically, see [Sharing AI Context Across a Development Team](/blog/sharing-ai-context-across-dev-team) for the full multi-developer setup.
+
+## Key Takeaways
+
+- CLAUDE.md: Claude Code's native convention; read automatically at session start; Claude-specific content
+- AGENTS.md: multi-tool standard; read by Claude Code, Cursor, Cline, and others; tool-agnostic content
+- Single-tool workflow (Claude Code only): CLAUDE.md is the straightforward choice
+- Multi-tool workflow: AGENTS.md as the shared source of truth, with tool-specific files extending it
+- Format is identical — plain Markdown; only the filename and convention differ
+- The hub-and-spoke structure (AGENTS.md as foundation, tool-specific files as extensions) prevents context fragmentation across tools
+- Teams should use AGENTS.md for team-wide context and commit it to version control
+
+Related: [What Is a CLAUDE.md File and Why It Matters](/blog/what-is-a-claude-md-file) · [How to Write a Great CLAUDE.md (Template + Examples)](/blog/how-to-write-a-great-claude-md) · [How to Share Context Across Cursor, Claude Code and Cline](/blog/share-context-across-cursor-claude-code-cline)

@@ -1,0 +1,257 @@
+---
+title: "Cursor Memory & Rules: How to Set Them Up for Better AI Coding"
+slug: "cursor-rules-setup"
+description: "Cursor's Rules and Memory features let you give the AI persistent context about your project. Learn how to configure both for maximum productivity."
+cluster: "AI Coding Tools & Comparisons"
+keywords: ["cursor rules", "cursor memory", "cursorrules", "cursor ai context", "cursor project rules"]
+primaryKeyword: "cursor rules"
+author: "Context Keeper Team"
+datePublished: "2026-07-08"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1586281380349-632531db7ed4"
+  alt: "Cursor IDE settings screen showing rules configuration for AI context persistence"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "settings configuration screen IDE"
+faq:
+  - q: "What are Cursor Rules?"
+    a: "Cursor Rules are instructions you give to Cursor's AI that apply to all conversations in a project. They're stored in a .cursorrules file (or in Cursor settings) and function similarly to CLAUDE.md for Claude Code."
+  - q: "What's the difference between Cursor Rules and Cursor Memory?"
+    a: "Rules are static instructions you write manually. Memory is Cursor's feature that can automatically remember things you tell it to save during a conversation. Both persist across sessions, but through different mechanisms."
+  - q: "How do I write effective Cursor Rules?"
+    a: "Include: your tech stack, naming conventions, patterns to follow, patterns to avoid, and any project-specific constraints. Keep them concise — Cursor Rules consume context in every conversation."
+relatedSlugs:
+  - "cursor-vs-windsurf"
+  - "claude-code-vs-cursor"
+  - "agents-md-vs-claude-md"
+  - "share-context-across-cursor-claude-code-cline"
+draft: false
+---
+
+<Tldr>
+- .cursorrules = static project instructions (like CLAUDE.md for Cursor)
+- Cursor Memory = dynamic, AI-updated notes from conversations
+- Both persist across sessions — use both for best coverage
+- Keep rules under ~500 tokens to avoid context overhead
+</Tldr>
+
+## Why Context Persistence Matters in Cursor
+
+Without persistent context, every Cursor session starts cold. The AI doesn't know your tech stack, doesn't know the patterns you've established, doesn't know what you've explicitly rejected. The first 10–15 minutes of any session get burned on re-establishing context — or worse, the AI produces generic code that doesn't match your project's conventions.
+
+Cursor provides two mechanisms to address this: **Rules** (static instructions you write) and **Memory** (context the AI accumulates from conversations). Using both together gives you the best context persistence.
+
+## Part 1: Cursor Rules
+
+### What Are Cursor Rules?
+
+**Cursor Rules are instructions you write that apply to every AI interaction in Cursor.** They're the Cursor equivalent of `CLAUDE.md` — a persistent briefing that tells the AI about your project's tech stack, conventions, and constraints.
+
+Rules can be configured at two levels:
+1. **Project rules** — stored in `.cursor/rules/` in your project, version-controlled, shared with your team
+2. **Global rules** — stored in Cursor Settings, apply across all projects
+
+### Setting Up Project Rules
+
+**Method 1 — Via Cursor Settings:**
+1. Open Cursor
+2. `Cmd/Ctrl+Shift+P` → "Open Cursor Settings"
+3. Navigate to Features → Rules
+4. Add your rules in the text area
+
+**Method 2 — Via file (recommended for teams):**
+Create `.cursor/rules/project.mdc` in your project root:
+
+```md
+---
+description: Project-wide rules for this codebase
+alwaysApply: true
+---
+
+## Tech Stack
+- Framework: Next.js 15.3, App Router (not Pages Router)
+- Language: TypeScript 5.8, strict mode
+- Database: PostgreSQL via Prisma 7
+- Auth: Auth0 via @auth0/nextjs-auth0 v3
+- Styling: Tailwind CSS 3.4
+
+## Commands
+- Dev: npm run dev
+- Tests: npm run test (Vitest)
+- Build: npm run build
+
+## Patterns
+- API routes: app/api/ directory, use route handlers
+- Components: React 19 with hooks only (no class components)
+- Imports: use @/ alias for internal imports
+- Error handling: return { data, error } objects — do not throw from API handlers
+
+## Do Not
+- Do NOT use tRPC
+- Do NOT use localStorage for auth state
+- Do NOT create raw SQL queries — use Prisma
+```
+
+The `.mdc` frontmatter format supports `alwaysApply: true` (included in every conversation), `globs` (applied for specific file patterns), and `description` (helps Cursor decide when to use the rule).
+
+### File-Specific Rules
+
+You can create rules that only apply when working on specific files:
+
+```md
+---
+description: Rules for API route files
+globs: ["app/api/**/*.ts"]
+alwaysApply: false
+---
+
+## API Route Standards
+- Always validate input with zod before processing
+- Check authentication with getSession() before accessing data
+- Return 401 for unauthenticated requests, 403 for unauthorized
+- Use try/catch for database operations and return error responses
+```
+
+When you're editing a file matching `app/api/**/*.ts`, this rule is automatically included in the AI's context.
+
+### Rule Length and Performance
+
+Rules consume tokens in every conversation. Keep them concise:
+- **Aim for under 500 words** for project rules
+- **Under 200 words** for specific rules
+- Prefer bullet points over paragraphs
+- Remove outdated entries aggressively
+
+A bloated rules file makes every conversation more expensive and may crowd out the actual task context.
+
+<FigureImage src="https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b" alt="Settings configuration screen with organized rules and guidelines for Cursor AI context setup" width={1200} height={630} credit="Unsplash" />
+
+## Part 2: Cursor Memory
+
+### What Is Cursor Memory?
+
+**Cursor Memory is a system for storing facts about your project that the AI can reference across sessions.** Unlike Rules (which you write manually), Memory is updated by the AI during conversations when you tell it to remember something.
+
+Think of it as the AI's notes that it carries into future conversations.
+
+### Enabling and Using Memory
+
+Memory is available in Cursor's Chat interface. To have Cursor save something:
+
+```
+Remember that we use the Result pattern from @badrap/result for error handling. 
+All service layer functions should return Result<T, Error>.
+```
+
+Cursor adds this to its memory store and will reference it in future relevant conversations.
+
+To view or edit current memories:
+1. Open Cursor Chat
+2. Click the memory icon in the chat toolbar
+3. View, edit, or delete individual memories
+
+### What to Store in Memory vs Rules
+
+| | Rules | Memory |
+|---|---|---|
+| **Source** | You write it | AI writes it (you trigger) |
+| **Format** | Structured Markdown | Short facts |
+| **Best for** | Architecture decisions, constraints, conventions | Session learnings, specific preferences |
+| **Update frequency** | Manual (deliberate updates) | Per session (when triggered) |
+| **Team sharing** | Yes (via version control) | No (personal per-user) |
+
+**Example Rule entry:** "Error handling: Return Result(T, Error) objects from service layer functions. Do not throw exceptions."
+
+**Example Memory entry:** "User prefers TypeScript interfaces over type aliases for object types because of how they display in hover tooltips."
+
+### Memory Limitations
+
+Cursor Memory is helpful but has limitations:
+- **It's personal** — memories don't sync across team members
+- **It's implicit** — you have to explicitly tell Cursor to remember things; it doesn't auto-extract decisions
+- **It can drift** — old memories may conflict with new ones; review periodically
+
+For team context and automatic decision capture, you need a more systematic approach.
+
+## Combining Rules and Memory for Maximum Effect
+
+The best setup uses both:
+
+1. **Cursor Rules** for project decisions that should apply to everyone (tech stack, patterns, constraints). Write once, commit to version control.
+
+2. **Cursor Memory** for personal preferences and session-specific learnings ("remember to always run the test for this module before considering the task done").
+
+3. **Regular review** — monthly, review both Rules and Memory for outdated entries. Remove stale ones, update changed decisions.
+
+## The Multi-Tool Context Problem
+
+If you use Cursor alongside Claude Code or Cline, you face a context fragmentation problem: your Cursor Rules don't automatically propagate to Claude Code's `CLAUDE.md`, and vice versa.
+
+This leads to the two tools having different understandings of your project — Claude Code proposes something Cursor was told to avoid, or Cursor doesn't know about a pattern Claude Code established.
+
+**Solution:** Maintain a single canonical context source and sync it:
+
+1. Keep `CLAUDE.md` as the canonical source
+2. Maintain your Cursor Rules to mirror the most important entries from `CLAUDE.md`
+3. Use an automatic capture tool like [Context Keeper](/) to keep `CLAUDE.md` current as decisions evolve
+
+This way, when a session with Claude Code establishes a new pattern, it gets captured to `CLAUDE.md`, and you update the Cursor Rules on your next review.
+
+See [How to Share Context Across Cursor, Claude Code & Cline](/blog/share-context-across-cursor-claude-code-cline) for a complete cross-tool context strategy.
+
+<FigureImage src="https://images.unsplash.com/photo-1586281380349-632531db7ed4" alt="Organized workspace with notes and documentation representing systematic context management across AI coding tools" width={1200} height={630} credit="Unsplash" />
+
+## A Complete Cursor Context Setup
+
+Here's a production-ready setup for a Next.js project:
+
+**`.cursor/rules/project.mdc`:**
+
+```md
+---
+description: Core project rules
+alwaysApply: true
+---
+
+## Stack
+- Next.js 15.3 App Router (not Pages), TypeScript 5.8 strict
+- Prisma 7 + PostgreSQL, Auth0 v3, Tailwind CSS 3.4, Vitest
+
+## Patterns
+- API routes: app/api/, return { data } or { error: string }
+- Auth check: getSession() at the top of every protected route
+- No class components, no tRPC, no raw SQL
+- Imports: use @/ alias
+
+## Commands
+npm run dev | npm run test | npm run build | npm run db:migrate
+```
+
+**`.cursor/rules/api-routes.mdc`:**
+
+```md
+---
+description: API route specific standards
+globs: ["app/api/**/*.ts"]
+---
+
+Validate input with zod. Check auth before data access.
+Return 401 for unauth, 403 for forbidden, 422 for validation errors.
+Use try/catch for DB calls and return { error: message }.
+```
+
+Total: under 200 words. Concise, precise, actionable.
+
+## Key Takeaways
+
+- Cursor Rules = static instructions you write, applied to every conversation; stored in `.cursor/rules/`
+- Cursor Memory = AI-maintained notes updated during conversations; personal, not team-shared
+- Use both: Rules for team-wide architecture decisions, Memory for personal preferences and session learnings
+- Keep Rules under 500 words total — token overhead is real
+- File-specific rules (via `globs`) let you have more targeted context for specific file types
+- For multi-tool workflows (Cursor + Claude Code + Cline), maintain a canonical `CLAUDE.md` and sync Rules from it
+- Automatic capture tools solve the maintenance discipline problem
+
+Related: [Claude Code vs Cursor](/blog/claude-code-vs-cursor) · [Windsurf Memories Explained](/blog/windsurf-memories-explained) · [How to Share Context Across Cursor, Claude Code & Cline](/blog/share-context-across-cursor-claude-code-cline)

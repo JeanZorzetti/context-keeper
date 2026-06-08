@@ -1,0 +1,190 @@
+---
+title: "Windsurf Memories Explained: Persistent Context for AI Coding"
+slug: "windsurf-memories-explained"
+description: "Windsurf Memories let the AI remember project context, preferences, and decisions across sessions. Here's how they work and how to get the most out of them."
+cluster: "AI Coding Tools & Comparisons"
+keywords: ["windsurf memory", "windsurf memories", "windsurf context", "windsurf ai memory"]
+primaryKeyword: "windsurf memory"
+author: "Context Keeper Team"
+datePublished: "2026-07-09"
+readingTime: 7
+heroImage:
+  src: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e"
+  alt: "Abstract memory visualization representing Windsurf AI persistent memory across coding sessions"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "memory persistent brain abstract"
+faq:
+  - q: "What are Windsurf Memories?"
+    a: "Windsurf Memories is a feature that lets the AI (Cascade) remember information across sessions — project preferences, architectural decisions, and working patterns you want it to retain."
+  - q: "Are Windsurf Memories automatic or manual?"
+    a: "Both. Windsurf can automatically suggest saving information to Memory, or you can manually tell it to remember something. You can also view and edit your Memories directly."
+  - q: "How do Windsurf Memories compare to CLAUDE.md?"
+    a: "Both serve the same purpose — persistent context across sessions. CLAUDE.md is a file (version-controllable, portable, works with any tool). Windsurf Memories are stored in Windsurf's system (tool-specific, easier to maintain, not version-controlled)."
+relatedSlugs:
+  - "cursor-vs-windsurf"
+  - "best-ai-coding-agents-2026"
+  - "agents-md-vs-claude-md"
+  - "ai-agent-memory-short-term-vs-long-term"
+draft: false
+---
+
+<Tldr>
+- Windsurf Memories = Cascade's persistent context store across sessions
+- Semi-automatic: Windsurf suggests what to save, you confirm
+- Not version-controlled — keep important decisions in AGENTS.md too
+- Works well for Windsurf-only teams; needs AGENTS.md for multi-tool teams
+</Tldr>
+
+## What Are Windsurf Memories?
+
+**Windsurf Memories is a built-in feature of Windsurf's Cascade AI that allows the agent to remember information across sessions — project preferences, architectural decisions, naming conventions, and working patterns.** Unlike a static rules file you write and maintain, Windsurf Memories is semi-dynamic: Windsurf can suggest memories to save based on your conversations, and you can manually add or edit them.
+
+This addresses the core problem of [context rot](/blog/what-is-context-rot-in-ai-coding-agents) — the loss of project knowledge between sessions. Every time a new Cascade session starts, it has access to saved memories rather than starting completely cold.
+
+## How Windsurf Memories Work
+
+Windsurf Memories operates through three mechanisms:
+
+**1. Automatic suggestions.** During a session, when Cascade detects that you've established a significant pattern or preference, it may suggest saving it to Memory: "Should I remember that we use Prisma with PostgreSQL for this project?"
+
+**2. Manual saves.** You can explicitly ask Cascade to remember something:
+```
+Remember that we're using Tailwind CSS only — no CSS Modules or styled-components.
+```
+
+**3. Direct editing.** You can view, edit, add, and delete memories through Windsurf's Memory panel (Settings → AI → Memories).
+
+When Cascade starts a new session, it has access to all saved memories and uses them to inform its responses.
+
+## Types of Information to Store in Memories
+
+The most valuable things to save in Windsurf Memories:
+
+**Tech stack specifics:**
+- "This project uses Next.js 15 App Router, not Pages Router"
+- "TypeScript strict mode is enabled — no any types"
+- "Testing: Vitest, not Jest"
+
+**Architecture decisions:**
+- "We use Prisma for database access — no raw SQL"
+- "Auth is handled by Auth0, not NextAuth"
+- "Error handling: return objects with data/error fields, don't throw"
+
+**Naming and file conventions:**
+- "API routes go in app/api/ — route handlers, not page-based API routes"
+- "Components use PascalCase filenames in components/[domain]/"
+- "Tests co-located with source files as [filename].test.ts"
+
+**Explicit rejections:**
+- "We rejected tRPC — use plain Next.js route handlers"
+- "Don't use Redux — Zustand for state management"
+
+**Personal preferences:**
+- "Always run tests after making changes to the auth module"
+- "When suggesting code, prefer explicit types over inference for function parameters"
+
+<FigureImage src="https://images.unsplash.com/photo-1591696205602-2f950c417cb9" alt="Memory cards and organized information representing Windsurf Memories system for AI context persistence" width={1200} height={630} credit="Unsplash" />
+
+## Setting Up Windsurf Memories for a New Project
+
+When starting a new project in Windsurf, front-load memory creation to prevent the cold-start problem:
+
+**Step 1: Open a new Windsurf session in your project directory.**
+
+**Step 2: Tell Cascade to build initial memories:**
+
+```
+I'm starting a new project. Here's the context you should remember:
+
+Tech stack: Next.js 15.3 App Router, TypeScript strict mode, PostgreSQL via Prisma 7, 
+Auth0 v3, Tailwind CSS 3.4, Vitest for testing.
+
+Architecture decisions:
+- Error handling: return { data } or { error: string } — never throw from API handlers
+- Auth: Auth0 (not NextAuth, not Passport)
+- Database: Prisma only (no raw SQL, no other ORM)
+- API: Next.js route handlers in app/api/ (no tRPC)
+
+Do not use:
+- localStorage for auth state
+- Class components (hooks only)
+- The Pages Router
+
+Save these to Memory so you have them in future sessions.
+```
+
+Cascade will create a set of memories capturing these decisions. Each subsequent session starts with this context already loaded.
+
+**Step 3: Verify by checking the Memory panel** (Settings → AI → Memories). You should see the entries you just created.
+
+## Managing and Maintaining Memories
+
+### Regular Memory Audits
+
+Memories can become stale. If you switch libraries, change patterns, or make new architectural decisions, old memories may conflict with new ones. Schedule a monthly memory review:
+
+1. Open the Memories panel
+2. Check for outdated entries (old library versions, rejected patterns)
+3. Update or delete stale memories
+4. Add new decisions made in recent sessions
+
+A memory that says "use Redux for state" when you've since migrated to Zustand will actively mislead Cascade.
+
+### Keeping Memories Concise
+
+Each memory should be one specific fact or decision. Avoid memory entries that bundle multiple ideas:
+
+**Bad:** "The project uses Next.js App Router with TypeScript and we prefer Tailwind over CSS Modules and we're using Prisma for the database."
+
+**Better — three separate memories:**
+1. "Framework: Next.js 15 App Router (not Pages Router)"
+2. "Styling: Tailwind CSS — no CSS Modules or styled-components"
+3. "Database: Prisma 7 with PostgreSQL — no raw SQL"
+
+Concise, single-topic memories are easier to maintain and less likely to have conflicts.
+
+## Windsurf Memories vs CLAUDE.md / AGENTS.md
+
+Both solve context persistence, but through very different mechanisms:
+
+| | Windsurf Memories | CLAUDE.md |
+|---|---|---|
+| **Format** | AI-managed entries | Markdown file |
+| **Version control** | No | Yes (committed to repo) |
+| **Team sharing** | No (personal per-user) | Yes (everyone gets it) |
+| **Portability** | Windsurf only | Works in Claude Code, Cursor, etc. |
+| **Maintenance** | Semi-automatic | Manual (or auto-captured) |
+| **Visibility** | Windsurf Memory panel | Any text editor / git log |
+
+**For Windsurf-only teams:** Memories work well — automatic suggestions reduce maintenance burden and the context persists reliably.
+
+**For multi-tool teams** (Windsurf + Claude Code + Cline): You need a tool-agnostic solution. `CLAUDE.md` or `AGENTS.md` is version-controlled, portable, and works with all AI coding tools. Keep this as the canonical source and let Memories supplement it.
+
+A good hybrid approach:
+1. Maintain `AGENTS.md` in your project for the canonical architectural decisions
+2. Use Windsurf Memories for Windsurf-specific preferences and session-specific learnings
+3. Keep the two roughly in sync on major decisions
+
+## Windsurf Memories Limitations
+
+**They're personal, not team-shared.** Each developer's Windsurf Memories are their own. A new team member's Windsurf starts with no project memories. For team context, you need a version-controlled file.
+
+**They're Windsurf-only.** If you switch to Cursor or Claude Code for a session, the Windsurf Memories aren't available. [Context rot](/blog/what-is-context-rot-in-ai-coding-agents) returns unless you have a parallel `CLAUDE.md` or `.cursorrules`.
+
+**Semi-automatic isn't fully automatic.** Windsurf may suggest memories but doesn't guarantee it captures every significant decision. Important decisions made mid-session may not get suggested for memory. Explicit manual saves are often necessary.
+
+<FigureImage src="https://images.unsplash.com/photo-1535378620166-273708d44e4c" alt="Connected network visualization representing how Windsurf Memories connect past context to new AI sessions" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- Windsurf Memories = Cascade's persistent context store; semi-automatic (suggests + manual saves)
+- Most valuable content: tech stack decisions, architecture decisions, explicit rejections, naming conventions
+- Front-load memory creation on new projects to prevent the cold-start problem
+- Audit memories monthly — stale entries actively mislead the AI
+- Keep memories concise and single-topic for easier maintenance
+- Memories are personal (per-developer) and Windsurf-only — not a substitute for `AGENTS.md` in multi-tool teams
+- Pair Memories with `AGENTS.md` for a robust multi-tool context strategy
+
+Related: [Cursor vs Windsurf](/blog/cursor-vs-windsurf) · [AGENTS.md vs CLAUDE.md: The Agent Instruction File Standard](/blog/agents-md-vs-claude-md) · [What Is Context Rot in AI Coding Agents](/blog/what-is-context-rot-in-ai-coding-agents)

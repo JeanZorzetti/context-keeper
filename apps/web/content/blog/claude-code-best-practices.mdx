@@ -1,0 +1,253 @@
+---
+title: "Claude Code Best Practices for Large Codebases"
+slug: "claude-code-best-practices"
+description: "Proven best practices for using Claude Code effectively on production codebases — context management, task decomposition, review workflows, and avoiding common pitfalls."
+cluster: "Claude Code"
+keywords: ["claude code best practices", "claude code production", "claude code large codebase", "claude code tips"]
+primaryKeyword: "claude code best practices"
+author: "Context Keeper Team"
+datePublished: "2026-06-24"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1522071820081-009f0129c71c"
+  alt: "Development team reviewing code on screens, applying best practices for AI-assisted coding"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "development team code review screens"
+faq:
+  - q: "What is the most important Claude Code best practice?"
+    a: "Maintaining a current, accurate CLAUDE.md file. This single practice eliminates context rot and ensures every session starts with your full architectural context already loaded."
+  - q: "How should I structure tasks for Claude Code?"
+    a: "Decompose large features into small, verifiable tasks. Claude Code performs best when each task has a clear success criterion that can be verified — a passing test, a working UI, or a specific output."
+  - q: "Should I let Claude Code make commits directly?"
+    a: "For development work, yes. Configure auto-commit in Claude Code settings for a fast iteration loop. For production branches or shared repos, review before committing — add a hook to pause before git push."
+  - q: "How do I handle sensitive files with Claude Code?"
+    a: "Add sensitive paths to a .claudeignore file (similar to .gitignore). Never include secrets in CLAUDE.md. Be explicit about what Claude Code should not touch."
+relatedSlugs:
+  - "claude-code-complete-guide"
+  - "claude-code-hooks-explained"
+  - "how-to-write-a-great-claude-md"
+  - "reduce-claude-api-token-costs"
+draft: false
+---
+
+<Tldr>
+- Keep CLAUDE.md current — it's the foundation of everything
+- Break tasks small — clear success criteria beat vague instructions
+- Use hooks for guardrails (pause before push, run tests on save)
+- Review don't rubber-stamp — Claude Code is fast but not infallible
+</Tldr>
+
+## The Foundation: A Current CLAUDE.md
+
+**Every other Claude Code best practice depends on having an accurate, current `CLAUDE.md`.**
+
+When Claude Code starts a session cold, it has zero knowledge of your project. With a good `CLAUDE.md`, it starts with your full architectural context already loaded — the tech stack, the patterns in use, the decisions made, the things to avoid. The difference in output quality between "cold start with no CLAUDE.md" and "warm start with a comprehensive CLAUDE.md" is dramatic.
+
+What belongs in `CLAUDE.md`:
+- **Tech stack with versions** — not just "Next.js" but "Next.js 15.3 App Router (not Pages Router)"
+- **Decisions and their reasons** — "Prisma (not Drizzle) — chosen for type safety and migration tooling"
+- **Explicit rejections** — "Do NOT use tRPC; we use plain Next.js API routes"
+- **Commands** — `npm run dev`, `npm run test`, how to run migrations
+- **File structure conventions** — where components live, how hooks are named, where API routes go
+- **Testing conventions** — what framework, where tests live, how mocks work
+
+Keep it under 500 lines — long `CLAUDE.md` files get expensive. Prefer specificity over comprehensiveness.
+
+```md
+## Architecture Decisions
+- Auth: Auth0 v3 (not NextAuth, not Passport) — managed sessions, SOC 2 path
+- Database: PostgreSQL via Prisma 7 — type-safe client, migrations via prisma migrate
+- API: Next.js App Router route handlers in app/api/ — no tRPC
+- State: Zustand for client state — no Redux, no Context API for complex state
+- Testing: Vitest + @testing-library/react — tests co-located with source files
+
+## DO NOT
+- Do not introduce new dependencies without approval
+- Do not use localStorage for auth state (XSS risk)
+- Do not create new database tables without a Prisma migration
+```
+
+## Task Decomposition: The Most Impactful Practice
+
+The single biggest predictor of Claude Code output quality is how tasks are scoped. Large, vague tasks produce confused, generic output. Small, well-defined tasks produce precise, correct output.
+
+**Bad:** "Build the new user onboarding flow."
+
+**Good:** "Create a POST /api/onboarding/complete route that: (1) marks the user's `onboardingComplete` field as true in the database, (2) creates a default project for the user using the Project schema in schema.prisma, (3) returns `{ success: true, projectId }`. Handle the case where the user already completed onboarding by returning a 409. Write the test in `__tests__/api/onboarding.test.ts`."
+
+The good version has:
+- A clear, bounded scope
+- Specific success criteria
+- References to actual files and schemas
+- Edge case handling specified
+
+When you give Claude Code a vague task, it makes assumptions — and assumptions are where bugs come from.
+
+### The Two-Step Pattern for Complex Tasks
+
+For any task involving a significant change:
+
+1. **Diagnose first.** "Read the relevant files and tell me your plan before making any changes."
+2. **Approve the plan, then execute.** "That plan looks right. Go ahead and implement it."
+
+This two-step approach catches misunderstandings before they become code changes. It's a 2-minute investment that saves 20 minutes of fixing wrong implementations.
+
+<FigureImage src="https://images.unsplash.com/photo-1531482615713-2afd69097998" alt="Developer reviewing code plans on a whiteboard before implementation — representing the Claude Code two-step task approach" width={1200} height={630} credit="Unsplash" />
+
+## Context Management: Avoiding Degradation
+
+[Context rot](/blog/what-is-context-rot-in-ai-coding-agents) — the degradation of AI awareness over long sessions — is the most common source of late-session quality problems. Here's how to manage it:
+
+### Use `/clear` Between Tasks
+
+When you complete one task and move to the next, run `/clear` in the Claude Code session. This resets the conversation history but keeps the agent running and connected to MCP servers. The next task starts fresh, with only `CLAUDE.md` providing context — not 2 hours of conversation about a different feature.
+
+Without `/clear`, each task's context accumulates. By task 5 of a session, the agent is carrying unrelated context from tasks 1–4, which can cause interference and increases token costs.
+
+### Feed Files, Don't Describe Files
+
+Instead of: "The auth middleware is in the middleware directory and it checks for a session cookie..."
+
+Say: "Read middleware/auth.ts and use the session validation logic there."
+
+Let Claude Code read the source of truth directly. Your verbal description is always less precise than the code itself, and costs fewer tokens to let the agent read it directly.
+
+### Work With One Layer at a Time
+
+Changing the database schema, the API layer, and the UI in one task is a recipe for confusion. Break it into three sequential tasks, each verifiable before the next begins:
+1. "Update the Prisma schema for the new `role` field and generate the migration."
+2. "Update the API routes to return the `role` field."
+3. "Update the UI components to display the role."
+
+Each step can be verified (migration runs, API tests pass, UI renders correctly) before the next begins. If step 2 breaks, you know the problem is isolated to the API layer.
+
+## Review Workflow: Never Rubber-Stamp
+
+Claude Code is fast. That speed creates a temptation to approve diffs without reading them carefully. Resist this.
+
+**What to look for in every diff:**
+
+- **Pattern violations.** Does the generated code use the patterns established in `CLAUDE.md`? An agent that's been in a session for 2 hours sometimes drifts.
+- **Missing error handling.** Claude Code frequently implements the happy path completely and leaves error cases thin.
+- **Security lapses.** User input going into a database query without validation. Missing rate limiting on an auth endpoint. These look plausible in the code but are wrong.
+- **Test coverage.** Did the agent test the new behavior? Does it test the edge cases you care about?
+- **Side effects.** Changes to a shared utility function can affect more than the targeted feature. Scan for callers.
+
+The review skill is what makes AI-augmented development safe. A fast review isn't a shallow review — experienced developers can spot patterns quickly. If you're still building that speed, slow down and read carefully. The 5 minutes spent reviewing is cheaper than the hour spent debugging a production issue.
+
+## Hooks: Guardrails That Run Automatically
+
+Hooks are commands that Claude Code runs automatically at specific lifecycle events. Use them to enforce quality without relying on remembering to ask Claude Code to check things.
+
+**Essential hooks for production codebases:**
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npm run typecheck 2>&1 | tail -5 || true" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push*)",
+        "hooks": [
+          { "type": "command", "command": "npm run test" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This:
+- Runs TypeScript type checking after every file edit (catches type errors immediately)
+- Runs the full test suite before any `git push` (prevents pushing broken code)
+
+The `|| true` on the typecheck ensures a type error doesn't crash the hook system — it still shows you the error in Claude Code's output.
+
+For a full hooks reference, see [Claude Code Hooks Explained](/blog/claude-code-hooks-explained).
+
+## Token Cost Management
+
+Token costs are real. An undisciplined session can consume $10–30 in API calls for work that should cost $1–2. The key practices:
+
+**Write a comprehensive `CLAUDE.md`.** The cold-start cost of a session without `CLAUDE.md` (where Claude Code explores the codebase to understand it) can be 10–50x higher than a session that starts with clear context.
+
+**Use `/compact` for long sessions.** `/compact` asks Claude Code to summarize the conversation history into a condensed form. You lose some detail but save significant token costs in long sessions.
+
+**Feed specific files, not directories.** "Read all the files in the src/ directory" will consume enormous context. "Read `src/api/auth.ts`" is precise and cheap.
+
+**Start fresh sessions for new tasks.** Don't reuse a session from yesterday for today's work. The stale context is a liability, not an asset.
+
+See [How to Reduce Claude API Token Costs](/blog/reduce-claude-api-token-costs) for a complete cost optimization guide.
+
+## Sensitive Files and Security
+
+Claude Code will access any file it can reach. Use these controls to prevent sensitive data from leaking into the agent's context:
+
+**`.claudeignore`** — works like `.gitignore`, prevents Claude Code from reading specified files:
+
+```
+.env
+.env.local
+.env.*.local
+secrets/
+*.pem
+*.key
+```
+
+**Permission rules** — restrict what shell commands Claude Code can run:
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | sh)"
+    ]
+  }
+}
+```
+
+**Never put secrets in `CLAUDE.md`.** The `CLAUDE.md` file is often committed to version control. Reference where a secret can be found, never the value itself.
+
+```md
+## Credentials
+- Database URL: in .env as DATABASE_URL (never commit the value)
+- Stripe keys: in .env (never reference in code outside of env vars)
+```
+
+## Large Codebase-Specific Practices
+
+On a codebase with millions of lines, Claude Code cannot effectively process the entire structure. These practices help it stay effective:
+
+**Maintain module-level CLAUDE.md files.** For large repositories, create `CLAUDE.md` files in key subdirectories (e.g., `packages/api/CLAUDE.md`, `packages/ui/CLAUDE.md`). Claude Code reads all `CLAUDE.md` files it finds in the directory tree.
+
+**Tell Claude Code which files to read.** Instead of letting it explore, give explicit file paths: "The database schema is in `prisma/schema.prisma`. The relevant API handler is in `app/api/users/route.ts`. Read those and suggest the query change needed."
+
+**Use subagents for parallel work.** For tasks that span many files independently (adding type annotations to 20 functions, writing tests for 15 endpoints), Claude Code can spawn subagents to work on different files in parallel. "Write unit tests for each exported function in `lib/auth.ts` using subagents for parallel execution."
+
+<FigureImage src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64" alt="Multiple code editors and terminal windows open simultaneously — representing Claude Code subagent parallel work in a large codebase" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- `CLAUDE.md` is the foundation — invest in it before your first production session
+- Scope tasks narrowly with specific success criteria; avoid vague, large-scope instructions
+- Use the two-step pattern (plan → approve → execute) for significant changes
+- Use `/clear` between tasks to prevent context accumulation and drift
+- Review every diff for pattern violations, missing error handling, and security gaps
+- Hooks automate guardrails (typecheck on edit, test before push) without manual reminders
+- Use `.claudeignore` and permission rules to keep sensitive files out of context
+- For large codebases: explicit file paths, module-level `CLAUDE.md`, and subagents for parallel work
+
+These practices compound. A session with good task scoping, an accurate `CLAUDE.md`, and lint/type hooks produces consistently high-quality output. Without them, Claude Code is still useful but requires significantly more manual correction.
+
+Related: [Claude Code: The Complete Guide](/blog/claude-code-complete-guide) · [Claude Code Hooks Explained](/blog/claude-code-hooks-explained) · [How to Reduce Claude API Token Costs](/blog/reduce-claude-api-token-costs)

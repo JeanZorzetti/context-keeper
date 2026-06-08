@@ -1,0 +1,226 @@
+---
+title: "How to Document Architectural Decisions Automatically with AI"
+slug: "how-to-document-architectural-decisions-automatically"
+description: "Manual ADR maintenance is a bottleneck. Learn how to automate architectural decision capture from your AI coding sessions, keeping your documentation always current."
+cluster: "Teams & Architecture Docs"
+keywords: ["automated decision capture", "automatic architectural documentation", "ai decision tracking", "automatic adr"]
+primaryKeyword: "automated decision capture"
+author: "Context Keeper Team"
+datePublished: "2026-07-26"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1485856407642-7f9ba0268b51"
+  alt: "Automated pipeline arrows showing automatic capture of architectural decisions from AI coding sessions"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "automation pipeline arrows data flow"
+faq:
+  - q: "Can architectural decisions really be captured automatically?"
+    a: "Yes. Tools like Context Keeper monitor your Claude Code session transcripts and use AI to identify and extract architectural decisions. The extracted decisions are then formatted and written to your CLAUDE.md or decision log automatically."
+  - q: "How accurate is automatic decision capture?"
+    a: "Modern extraction (using Claude via Groq API) is highly accurate for explicit decisions ('I chose X because Y'). It occasionally misses implicit decisions (where a pattern emerges without explicit discussion). Periodic review + automatic capture gives the best coverage."
+  - q: "What does automatic decision capture actually look like in practice?"
+    a: "You code normally. After your session ends, Context Keeper processes the transcript, extracts decisions like 'decided to use Prisma ORM because it provides type-safe database access aligned with our TypeScript stack', and appends them to CLAUDE.md. Your next session starts with that decision already loaded."
+relatedSlugs:
+  - "architecture-decision-records-guide"
+  - "manual-vs-automatic-context-capture"
+  - "what-is-context-rot-in-ai-coding-agents"
+  - "adr-templates-and-examples"
+draft: false
+---
+
+<Tldr>
+- Session transcripts contain all your decisions — they just need extraction
+- Tools like Context Keeper use AI to extract and format decisions automatically
+- Coverage: automatic catches ~85%; periodic review catches the rest
+- Zero extra work: decisions captured as a side effect of normal coding
+</Tldr>
+
+## The Documentation Bottleneck
+
+**Every decision you make with an AI coding agent is recorded in the session transcript — but manually extracting and documenting those decisions is a bottleneck that most developers skip.** The result: architectural decisions exist in conversations that disappear, `CLAUDE.md` files that grow stale, and ADR directories that stop getting updated as development pace increases.
+
+Automatic documentation capture solves this by treating the session transcript as a raw source and using AI to extract and format the decisions without human intervention.
+
+## What's Already in Your Session Transcripts
+
+A typical 2-hour Claude Code session produces a transcript that includes, embedded in conversation:
+
+- Technology choices: "Let's use Prisma for the ORM — it gives us type safety and migration tooling"
+- Pattern decisions: "From now on, all API handlers should return `{ data }` on success and `{ error: string }` on failure — never throw"
+- Explicit rejections: "We're not going to use JWT for auth — the XSS risk with localStorage is unacceptable given our data sensitivity"
+- File structure decisions: "Put all types in `types/` — don't inline type definitions in component files"
+- Dependency decisions: "Add stripe@14 — we need the new Payment Element for the checkout flow"
+
+Every one of these decisions is worth persisting. Most are never manually extracted.
+
+## How Automatic Capture Works
+
+**Automatic decision capture uses an AI model to parse session transcripts and extract architectural decisions, then writes them to your context files in structured format.**
+
+The [Context Keeper](/) workflow:
+
+1. **Session ends** — Claude Code fires its `Stop` hook
+2. **Transcript is processed** — Context Keeper reads the session transcript, sends it to Claude for decision extraction
+3. **Decisions are identified** — Claude identifies explicit decisions, meaningful patterns established, and significant rejections
+4. **Deduplication** — decisions already in `CLAUDE.md` are not re-added
+5. **Update** — new decisions are appended to `CLAUDE.md` in the standard format
+6. **Next session** — Claude Code reads the updated `CLAUDE.md` at session start; the agent already knows what was decided
+
+The process takes 10–30 seconds and requires no user interaction.
+
+## Setting Up Automatic Capture
+
+**Step 1: Install Context Keeper**
+
+```bash
+npm install -g context-keeper
+```
+
+**Step 2: Configure the Claude Code hook**
+
+In `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "context-keeper capture" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Step 3: Initialize the project**
+
+```bash
+context-keeper init
+```
+
+This creates an initial `CLAUDE.md` from an analysis of the project structure and any existing documentation.
+
+From this point, capture is automatic. Every session's decisions flow into `CLAUDE.md` without manual action.
+
+<FigureImage src="https://images.unsplash.com/photo-1485856407642-7f9ba0268b51" alt="Automated pipeline showing AI-powered capture of architectural decisions from coding session transcripts" width={1200} height={630} credit="Unsplash" />
+
+## What Gets Captured (and What Doesn't)
+
+Automatic capture is highly accurate for **explicit decisions** — where a decision is clearly stated in the conversation:
+
+**Captured well:**
+- "We'll use Auth0 for authentication instead of NextAuth"
+- "I decided to put the API response logic in a separate helper — it was getting repeated across too many routes"
+- "Don't add any more direct Prisma imports in components — all DB access goes through the service layer"
+- Technology version decisions ("upgrade to Stripe v14 for the new Payment Element")
+
+**Less reliably captured:**
+- **Implicit patterns** — when you correct the agent's code without discussing why, the pattern may not be captured unless the correction is stated as a decision: "Use this pattern instead" is capturable; silently editing code is not
+- **Exploratory decisions** — when you try multiple approaches and settle on one without an explicit statement, capture depends on how clearly the final choice is stated
+- **Negative space** — things deliberately left out (no feature flags, no internationalization) are rarely stated explicitly and therefore rarely captured
+
+**Coverage expectation:** Automatic capture reliably gets ~80–90% of explicit architectural decisions. The remaining 10–20% comes from implicit patterns and unexplained corrections — these benefit from periodic manual review.
+
+## The Extraction Quality: What AI Sees
+
+The AI extracting decisions from transcripts sees context that helps it determine what's significant:
+
+**High extraction confidence:**
+- Explicit statements with "because" or "reason": "We're using X because Y"
+- Comparisons with rejected alternatives: "X instead of Y"
+- "Always," "never," "don't," "do not" statements
+- Decisions marked with clear consequences
+
+**Lower extraction confidence:**
+- Exploratory code without explicit conclusions
+- Long debugging sessions where the "decision" is implicit in the fix
+- Conversations that drift between topics without clear resolution
+
+**Example extraction output** — from transcript:
+
+```
+Session contained:
+- "decided to use Prisma v7 ORM for type-safe database access"
+- "rejected Drizzle due to smaller community and documentation quality"
+- "all API handlers return { data: T } or { error: string } — do not throw"
+- "middleware handles auth checks — do not duplicate in route handlers"
+
+Generated CLAUDE.md entries:
+## Architecture
+- DB: Prisma v7 — NOT Drizzle. Type-safe queries; migration tooling built-in.
+- Errors: Return response objects — do NOT throw from API handlers.
+- Auth: Middleware handles auth — do not duplicate auth checks in route handlers.
+```
+
+## Integrating with ADRs
+
+Automatic capture writes to `CLAUDE.md` — a format optimized for AI consumption. For teams that maintain formal ADRs, you can extend the workflow to also generate ADR stubs:
+
+```bash
+context-keeper capture --format adr --output docs/decisions/
+```
+
+This generates draft ADRs for significant decisions, which engineers then review and fill in the alternatives-considered sections. The draft:
+
+```md
+# ADR-DRAFT: Use Prisma ORM for Database Access
+
+## Status
+Draft (auto-generated — review required)
+
+## Decision
+Use Prisma v7 as the primary database ORM.
+
+## Reason
+Type-safe queries, built-in migration tooling.
+
+## Rejected
+Drizzle ORM (smaller community, documentation quality concerns)
+
+---
+*Auto-generated from session transcript. Add context, alternatives, and consequences.*
+```
+
+The engineer fills in the full alternatives section and promotes from Draft to Accepted. The routine documentation maintenance is automated; the judgment and completeness check remains human.
+
+## The Coverage Model: Automatic + Periodic Review
+
+The most effective documentation practice combines automatic capture with periodic human review:
+
+**Automatic capture (every session):** catches explicit decisions without effort. Requires the hook setup described above — then it runs silently.
+
+**Weekly review (15 minutes):** scan recent `CLAUDE.md` additions. Are the decisions stated clearly? Did the AI capture the right framing? Is anything missing that was decided but not stated explicitly in the session?
+
+**Quarterly audit (1 hour):** review the entire `CLAUDE.md` and ADR directory. Are all decisions still valid? Has anything been superseded? Are there stale entries from approaches you've abandoned?
+
+This three-layer approach — automatic, weekly, quarterly — provides comprehensive coverage without the bottleneck of per-session manual documentation.
+
+<FigureImage src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" alt="Calendar showing regular review cycles for maintaining automatically captured architectural decision documentation" width={1200} height={630} credit="Unsplash" />
+
+## The Business Case: Why This Pays Off
+
+**Context re-explanation cost:** Developers spending 5 sessions per day on AI coding spend an estimated 10–20 minutes per session re-establishing context that automatic capture would persist. At $100/hr, that's $83–$167/day in recoverable productivity per developer.
+
+**Knowledge retention:** When a developer leaves, their architectural decisions leave with them — unless documented. Automatic capture ensures decisions made in their AI coding sessions persist in the codebase, not just in their memory.
+
+**Onboarding acceleration:** A new developer with a thorough `CLAUDE.md` (maintained by automatic capture) can onboard an AI agent productively in hours rather than days. The agent already knows the project's decisions.
+
+**Code review confidence:** When a reviewer sees a pattern and wonders "why did we do it this way?", a documented decision (even in `CLAUDE.md`) answers the question immediately. Without capture, the answer is "I think we decided this in a session 3 months ago."
+
+For team-scale cost analysis, see [The Hidden Cost of Re-Explaining Context to AI Agents](/blog/hidden-cost-re-explaining-context).
+
+## Key Takeaways
+
+- Session transcripts contain all your architectural decisions — automatic capture extracts them without manual effort
+- Automatic capture reliably gets ~80–90% of explicit decisions; periodic review covers the rest
+- Setup: install context-keeper, add the Stop hook to `.claude/settings.json`, run `context-keeper init`
+- Extraction works best on explicit decision statements with stated reasons and rejected alternatives
+- Combine automatic capture (every session) + weekly review + quarterly audit for comprehensive coverage
+- ADR generation mode creates draft ADRs that engineers review and complete — automation handles the routine documentation, humans add the judgment
+- ROI: recoverable productivity from reduced context re-explanation + knowledge retention when developers leave
+
+Related: [Architecture Decision Records in the Age of AI Agents](/blog/architecture-decision-records-guide) · [Manual vs Automatic Context Capture for AI Agents](/blog/manual-vs-automatic-context-capture) · [ADR Templates and Examples](/blog/adr-templates-and-examples)

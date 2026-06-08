@@ -1,0 +1,222 @@
+---
+title: "Documentation That AI Agents Actually Read (and Use)"
+slug: "documentation-ai-agents-read"
+description: "Most documentation is written for humans. AI agents need documentation structured differently. Here's how to write docs that AI agents actually read and act on correctly."
+cluster: "Vibe Coding & Workflows"
+keywords: ["ai readable documentation", "documentation for ai agents", "how to write docs for ai", "ai agent documentation"]
+primaryKeyword: "ai readable documentation"
+author: "Context Keeper Team"
+datePublished: "2026-07-21"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1587440871875-191322ee64b0"
+  alt: "Well-structured technical documentation that AI agents can read and understand effectively"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "technical documentation structured clear"
+faq:
+  - q: "How is AI-readable documentation different from regular documentation?"
+    a: "AI-readable docs are explicit (no implied knowledge), structured (clear headings and sections), action-oriented (tell the agent what to do, not just what things are), and concise (every word counts in a context window)."
+  - q: "What documentation format works best for AI agents?"
+    a: "Markdown with clear headers, short paragraphs, and bullet points. Avoid prose that buries the key points. Start each section with the most important information."
+  - q: "Should I write documentation for AI agents or for humans?"
+    a: "Both, but differently. Human docs go in /docs or wikis. AI context docs (CLAUDE.md, AGENTS.md) are optimized for agent consumption: short, explicit, and decision-focused. They should be co-maintained."
+relatedSlugs:
+  - "how-to-write-a-great-claude-md"
+  - "how-to-onboard-ai-agent-codebase"
+  - "onboarding-developers-ai-readable-docs"
+  - "ai-coding-workflow-repeatable"
+draft: false
+---
+
+<Tldr>
+- AI-readable docs: explicit, structured, action-oriented, concise
+- Markdown + clear headers + bullets beats prose paragraphs
+- CLAUDE.md = agent context; /docs = human reference (both needed)
+- Structure: conclusion first, then supporting detail (inverse pyramid)
+</Tldr>
+
+## Documentation That Exists But Doesn't Help
+
+**Most technical documentation is written for human readers — and that's fine. But if you use AI coding agents, your documentation also needs to work for agent readers.** The problem: what makes good human documentation (comprehensive, narrative, context-rich) often makes poor agent documentation (too long, buries the critical facts, hard to extract actionable conclusions from).
+
+The result: developers who have good human documentation still spend significant time re-explaining context to their AI agents, because the docs that exist aren't structured in a way the agent can efficiently consume.
+
+This guide explains what makes documentation AI-readable, how to structure it for agent consumption, and how to maintain two complementary documentation streams — one for humans, one for agents — without doubling the maintenance burden.
+
+## The Core Difference: Instructions vs. Information
+
+**Human documentation informs.** A README explains what the project does, why it was built, how the pieces fit together. It's valuable reference material. A new developer reads it to build mental models.
+
+**AI agent documentation instructs.** An effective `CLAUDE.md` tells the agent exactly what to do, what not to do, and what the constraints are. It's more like a checklist or a config file than an essay. The agent needs to extract actionable facts, not absorb information.
+
+The difference shows up in every section:
+
+| Section | Human (informational) | AI (instructional) |
+|---|---|---|
+| Auth | "We use Auth0 for identity management, which provides managed session tokens and integrates with our compliance requirements." | "Auth: Auth0 v3. Use getSession() from @auth0/nextjs-auth0. NOT NextAuth — never." |
+| DB | "The application uses PostgreSQL via Prisma ORM, which provides type-safe queries and an excellent migration system." | "DB: `import { prisma } from '@/lib/prisma'`. NO direct PrismaClient. NO raw SQL." |
+| Errors | "We follow a consistent error handling approach across all API routes, returning structured error objects." | "Errors: return `{ error: string }` with HTTP status. NEVER throw from API handlers." |
+
+The human version has context; the AI version has instructions. Both are true; they serve different readers.
+
+## The Structural Principles of AI-Readable Documentation
+
+**Principle 1: Conclusion first (inverse pyramid)**
+
+Put the most important fact at the start of every section. AI agents process context in order — the first statement gets the most weight.
+
+```md
+# Good (conclusion first):
+Auth: Use Auth0 v3 getSession() for authentication. Session-based, not JWT.
+
+# Poor (context before conclusion):
+We evaluated several authentication options and ultimately decided on Auth0
+because of its managed session handling, which was important for our compliance
+requirements. We implemented it using the v3 SDK with session-based auth.
+```
+
+Both convey the same facts. The first is immediately usable by an agent. The second requires the agent to read 40 words before reaching the actionable fact.
+
+**Principle 2: Explicit over implied**
+
+Never rely on the agent to infer what you mean. State it directly.
+
+```md
+# Implicit (relies on inference):
+We use modern Next.js patterns.
+
+# Explicit:
+App Router only. No Pages Router. All routes in app/ directory.
+```
+
+**Principle 3: Action-oriented framing**
+
+Frame documentation as actions the agent should (or should not) take, not descriptions of how things are.
+
+```md
+# Descriptive (hard to act on):
+The project uses Prisma for database access.
+
+# Action-oriented:
+For all database queries: import { prisma } from "@/lib/prisma"
+Never create a PrismaClient instance directly.
+```
+
+**Principle 4: Concrete examples beat abstractions**
+
+A code example is worth 10x its prose equivalent for agent consumption:
+
+```md
+# Prose (requires interpretation):
+API routes return structured response objects with appropriate HTTP status codes.
+
+# Code example (immediately actionable):
+// Success
+return NextResponse.json({ data: result }, { status: 200 });
+// Error  
+return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1587440871875-191322ee64b0" alt="Clear and structured technical documentation open on a developer screen representing AI-readable documentation that coding agents can effectively consume" width={1200} height={630} credit="Unsplash" />
+
+## What Goes in CLAUDE.md vs. /docs
+
+**CLAUDE.md is for agents.** It should be:
+- Under 600 words (important facts only)
+- Action-oriented (what to do and not do)
+- Current (stale context misleads the agent)
+- Committed to the repo (automatically available)
+
+**docs/ is for humans.** It can be:
+- Comprehensive (cover edge cases, history, rationale)
+- Narrative (explain the thinking, not just the decision)
+- Long (no token budget constraint)
+- Updated less frequently (architectural change documents, not daily edits)
+
+**The relationship between them:**
+
+`CLAUDE.md` contains the condensed version; `/docs` contains the full version. When something changes, update `CLAUDE.md` first (high impact) and `/docs` when there's time (lower immediate impact).
+
+Example for the same decision:
+
+```md
+# In CLAUDE.md (agent):
+Auth: Auth0 v3 — NOT NextAuth. Session-based. See docs/decisions/0002-auth.md.
+
+# In docs/decisions/0002-auth.md (human):
+## ADR-0002: Authentication Approach
+
+[Full MADR format with context, alternatives, trade-offs...]
+```
+
+The agent gets what it needs in 12 tokens. The human gets full context in 500 words.
+
+## Structuring README for AI Readability
+
+The project README is often the first thing an AI agent reads. Restructure it to serve both audiences:
+
+```md
+# Project Name
+
+## What This Is
+[2-sentence description — both humans and agents benefit]
+
+## Quick Start
+[Commands in order — agents need these to be exact]
+
+## Architecture
+[Bullet-point summary of the key decisions — agent-consumable]
+
+## Constraints
+[What NOT to do — most important for agents]
+
+## Further Reading
+- [Architecture details](docs/architecture.md) — for humans
+- [Agent context](CLAUDE.md) — for AI tools
+```
+
+## Inline Code Documentation for Agents
+
+Comments in code are visible to AI agents when they read the file. Use them to explain non-obvious constraints:
+
+```ts
+// Cache TTL is 30s by intent — product requirement from 2025-11.
+// Pricing load >400ms correlates with 23% checkout abandonment.
+// Do not increase without product team review.
+const PRICING_CACHE_TTL = 30;
+```
+
+```ts
+// Do not call this function directly — use the singleton from lib/auth.ts.
+// Multiple instances cause session token conflicts.
+class AuthManager {
+```
+
+The best comments for AI agents are constraints and warnings — the "why this weird thing is intentional" explanations that prevent a well-meaning agent from "fixing" something that shouldn't be changed.
+
+## Documentation Maintenance: Keeping AI Docs Current
+
+**The biggest risk:** documentation that's accurate when written becomes misleading when it's stale. An agent told "use library X" when you've switched to library Y produces wrong code confidently.
+
+**The maintenance rhythm:**
+- Update `CLAUDE.md` immediately when an architectural decision changes — before the session that implements the change ends
+- Update `docs/decisions/` ADRs when a significant decision is made
+- Quarterly review of `CLAUDE.md` for staleness: does every line still reflect the project's current state?
+
+**Automatic maintenance:** [Context Keeper](/) monitors Claude Code sessions and updates `CLAUDE.md` automatically after each session. This keeps the agent context current without manual discipline.
+
+<FigureImage src="https://images.unsplash.com/photo-1499750310107-5fef28a66643" alt="Developer maintaining project documentation at their desk representing the ongoing process of keeping AI-readable documentation current" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- Human documentation informs; AI agent documentation instructs — both are needed, structured differently
+- CLAUDE.md: under 600 words, action-oriented, conclusion-first, concrete examples — the agent's primary context source
+- /docs: comprehensive, narrative, full context — for human reference
+- Four structural principles: conclusion first (inverse pyramid), explicit over implied, action-oriented framing, code examples over prose
+- Inline comments for non-obvious constraints: explain "why this intentional weirdness exists" for agents reading the file
+- Keep CLAUDE.md current: update immediately when decisions change; quarterly review for staleness
+- The relationship: CLAUDE.md references /docs for detail; /docs exists independently for human readers
+
+Related: [How to Write a Great CLAUDE.md (Template + Examples)](/blog/how-to-write-a-great-claude-md) · [How to Onboard an AI Agent to an Existing Codebase](/blog/how-to-onboard-ai-agent-codebase) · [Onboarding New Developers with AI-Readable Docs](/blog/onboarding-developers-ai-readable-docs)

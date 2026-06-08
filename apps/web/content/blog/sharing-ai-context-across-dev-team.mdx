@@ -1,0 +1,238 @@
+---
+title: "Sharing AI Context Across a Development Team"
+slug: "sharing-ai-context-across-dev-team"
+description: "When multiple developers use AI coding agents on the same project, shared context is critical. Here's how to set up team-wide AI context that everyone benefits from."
+cluster: "Teams & Architecture Docs"
+keywords: ["team ai context", "shared ai context team", "team claude code", "ai coding team workflow"]
+primaryKeyword: "team ai context"
+author: "Context Keeper Team"
+datePublished: "2026-07-27"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf"
+  alt: "Development team collaborating around a shared screen, representing shared AI context for teams"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "development team collaboration shared screen"
+faq:
+  - q: "How do you share CLAUDE.md across a development team?"
+    a: "Commit CLAUDE.md to your repository. Every team member gets the same context when they pull the latest code. Treat CLAUDE.md as a living document — PRs can include CLAUDE.md updates alongside code changes."
+  - q: "What if different team members use different AI tools?"
+    a: "Use AGENTS.md as the shared source of truth. It's the most widely supported format. Tool-specific files (.cursorrules, CLAUDE.md) can be generated from AGENTS.md or maintained as thin wrappers."
+  - q: "Who on the team should be responsible for maintaining shared AI context?"
+    a: "Ideally everyone, but ownership helps. Assign a 'context steward' who reviews and merges AI context updates, ensuring consistency and preventing drift. Alternatively, use automatic tools to reduce the manual burden."
+relatedSlugs:
+  - "agents-md-vs-claude-md"
+  - "standardizing-ai-agent-setup-team"
+  - "onboarding-developers-ai-readable-docs"
+  - "architecture-decision-records-guide"
+draft: false
+---
+
+<Tldr>
+- Commit CLAUDE.md / AGENTS.md to the repo — instant sharing via git
+- AGENTS.md for multi-tool teams; tool-specific files derive from it
+- Assign a context steward for consistency or use automatic capture
+- Include context updates in PRs alongside code changes
+</Tldr>
+
+## The Team Context Fragmentation Problem
+
+**When multiple developers on a team use AI coding agents, each person's AI agent operates with different context — unless the team deliberately shares it.** Developer A's Claude Code knows the Auth0 decision from last week's session. Developer B's Cursor doesn't. Developer C just joined and their agent doesn't know anything about the project yet.
+
+The result: three AI agents, three different context pictures, three different quality levels of AI-generated code. The architecture drift that results — Auth0 used in one file, JWT attempted in another, incorrect patterns in a third — is context fragmentation at team scale.
+
+This guide covers how to set up team-wide AI context that every developer and every AI agent benefits from, regardless of which tool they use.
+
+## The Foundation: Committing Context Files to the Repository
+
+**The simplest, most powerful team context sharing mechanism is committing `CLAUDE.md` or `AGENTS.md` to the repository.** When context files are in version control:
+
+- Every developer gets the same context when they clone or pull
+- Context updates land alongside the code changes that prompted them
+- PR reviews can include context file changes — "did you update AGENTS.md when you changed the auth approach?"
+- New team members get project context on first clone
+
+```bash
+# After creating AGENTS.md:
+git add AGENTS.md
+git commit -m "feat: add AI agent context file with architecture decisions"
+```
+
+This is the minimum viable team AI context setup. No tooling required. Effective immediately.
+
+## AGENTS.md as the Team-Wide Source of Truth
+
+For teams using multiple AI tools (some developers use Claude Code, others Cursor or Cline), a single `CLAUDE.md` isn't sufficient — each tool reads its own file.
+
+**`AGENTS.md` is the solution** — a format supported by multiple tools as the team-wide context source. When `AGENTS.md` exists in the repository:
+- Claude Code reads it
+- Cursor reads it
+- Cline reads it
+- Windsurf reads it
+
+Everyone's AI agent operates from the same shared context, regardless of tool.
+
+**Structure for a team AGENTS.md:**
+
+```md
+# [Project Name] — AI Agent Context
+
+## Project Overview
+[2-3 sentence description for agent orientation]
+
+## Tech Stack
+- [Framework]: [Version] — specific configuration notes
+- [Database]: [ORM] — access patterns
+- [Auth]: [Provider] — approach
+
+## Architecture Decisions
+- [Area]: [Decision] — NOT [rejected alternative]. [Reason].
+
+## Team Conventions
+- [Pattern]: [Convention — specific enough to change behavior]
+
+## Active Work (update regularly)
+- Current sprint: [brief]
+- In progress: [who is working on what]
+- Blocked: [blockers]
+
+## Do Not
+- [Anti-pattern]: [Reason]
+
+## Commands
+- Dev: [command]
+- Test: [command]
+- Build: [command]
+```
+
+The "Active Work" section is unique to team files — it provides shared state awareness that individual `CLAUDE.md` files don't need.
+
+<FigureImage src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf" alt="Development team collaborating around shared screens representing team-wide AI context sharing for multi-developer AI coding workflows" width={1200} height={630} credit="Unsplash" />
+
+## The Context Steward Role
+
+With multiple developers, context files can drift:
+- Different people add conflicting entries
+- Stale decisions accumulate
+- Important decisions made in individual sessions never make it to the shared file
+
+**The Context Steward** is the team member responsible for the quality of shared AI context. The role involves:
+- Reviewing AGENTS.md weekly (15–20 minutes)
+- Ensuring PRs that change architecture also update AGENTS.md
+- Removing stale or contradictory entries
+- Running a monthly deeper review
+
+This doesn't need to be a permanent role — rotate it monthly among senior team members. The important thing is that someone owns it.
+
+**Making context updates part of the PR process:**
+
+```md
+# PR Template addition:
+
+## AI Context (if applicable)
+- [ ] Updated AGENTS.md with new architectural decisions
+- [ ] Removed deprecated entries from AGENTS.md
+- [ ] No architectural changes (skip)
+```
+
+When context updates are part of the PR checklist, they happen as a matter of workflow rather than being forgotten.
+
+## Individual vs. Shared Context Layers
+
+Team AI context works in layers:
+
+**Layer 1 — Shared (AGENTS.md):** Team-wide architectural decisions, conventions, and commands. Everyone gets this. Committed to the repo.
+
+**Layer 2 — Tool-specific (CLAUDE.md, .cursorrules):** Extensions for specific AI tools that go beyond what AGENTS.md covers. Claude Code-specific hook configuration, for example. These can be thin wrappers that reference AGENTS.md.
+
+**Layer 3 — Personal (~/.claude/CLAUDE.md):** Individual developer preferences — code style choices, personal workflow shortcuts, individual API key management. Stays local, not committed.
+
+The team gets consistent core context from Layer 1; individual developers can customize their experience through Layers 2 and 3 without disrupting team consistency.
+
+## Handling Different Tools on the Team
+
+**Scenario:** Alice uses Claude Code. Bob uses Cursor. Carol uses Cline.
+
+**Without shared context:** Three different AI agents with three different project understandings.
+
+**With AGENTS.md in the repo:** All three agents read the same file. Core context is consistent.
+
+**Tool-specific extensions:**
+- Alice has `.claude/settings.json` with her hooks and MCP configuration
+- Bob has `.cursorrules` pointing to AGENTS.md with Cursor-specific additions
+- Carol has Cline Memory Bank supplementing AGENTS.md
+
+The team's core knowledge is shared; tool-specific configuration is personal.
+
+See [How to Share Context Across Cursor, Claude Code and Cline](/blog/share-context-across-cursor-claude-code-cline) for the full multi-tool setup.
+
+## Automatic Team Context Updates
+
+Manual maintenance is a bottleneck at team scale. When 5 developers each make decisions in their AI coding sessions, only a fraction of those decisions will be manually added to `AGENTS.md`.
+
+**Automated approach:** Configure each developer's Claude Code to run automatic capture that targets the shared repository file:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { 
+            "type": "command", 
+            "command": "context-keeper capture --output ./AGENTS.md --create-pr"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The `--create-pr` flag creates a draft PR with the proposed AGENTS.md update, rather than committing directly. The context steward reviews and merges the updates from all developers in the team's weekly review.
+
+**The team flow:**
+1. Developer makes architectural decision in Claude Code session
+2. Session ends → context-keeper capture runs → draft PR created
+3. Context steward reviews PRs weekly → merges good captures, rejects noise
+4. All team members' AI agents benefit from the merged decisions in their next pull
+
+<FigureImage src="https://images.unsplash.com/photo-1522071820081-009f0129c71c" alt="Team workflow diagram showing automated AI context capture and PR-based review for team-wide architectural decision sharing" width={1200} height={630} credit="Unsplash" />
+
+## What to Put in Team AGENTS.md (vs. Leave Personal)
+
+**Goes in team AGENTS.md:**
+- Architecture decisions that affect every developer ("Prisma only — no raw SQL")
+- Conventions that produce inconsistencies when not followed ("files: kebab-case")
+- Explicit rejections with reasons ("NOT tRPC — route handlers only")
+- Development commands ("npm run db:migrate")
+- Active sprint context (update frequently)
+
+**Leave personal:**
+- Individual developer's style preferences
+- Local development environment specifics (different developers may have different setups)
+- Personal shortcuts and workflow patterns
+- Exploratory approaches being tested by one developer
+
+The test: "If another developer's AI agent had this context, would it produce better or more consistent code?" Yes → team file. No or irrelevant → personal.
+
+## Measuring Team Context Quality
+
+After setting up shared AI context, you can measure whether it's working:
+- **Onboarding time:** how long does a new developer take to make their first meaningful contribution with AI assistance? Good context should bring this to hours rather than days.
+- **Wrong-pattern rate:** how often do PRs include code that violates established patterns? A well-maintained AGENTS.md should reduce this significantly.
+- **Context re-explanation time:** ask developers to estimate time spent re-explaining project context at the start of AI sessions. This should drop to near-zero with good shared context.
+
+## Key Takeaways
+
+- Commit AGENTS.md to the repository — instant team-wide context sharing via git
+- AGENTS.md works across Claude Code, Cursor, Cline, and Windsurf — best for multi-tool teams
+- Assign a Context Steward to maintain quality; rotate monthly
+- Make context updates part of the PR template — reduces the chance of decisions being made without documentation
+- Use a three-layer model: shared (AGENTS.md), tool-specific (CLAUDE.md, .cursorrules), personal (not committed)
+- Automatic capture with PR creation lets each developer contribute to team context without manual effort
+- Measure: onboarding time, wrong-pattern rate, context re-explanation time — all should improve with good shared context
+
+Related: [AGENTS.md vs CLAUDE.md: The Agent Instruction File Standard](/blog/agents-md-vs-claude-md) · [Standardizing AI Agent Setup Across a Development Team](/blog/standardizing-ai-agent-setup-team) · [Onboarding New Developers with AI-Readable Docs](/blog/onboarding-developers-ai-readable-docs)

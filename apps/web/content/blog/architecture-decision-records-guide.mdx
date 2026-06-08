@@ -1,0 +1,243 @@
+---
+title: "Architecture Decision Records (ADRs) in the Age of AI Agents"
+slug: "architecture-decision-records-guide"
+description: "Architecture Decision Records are the gold standard for documenting why technical decisions were made. Here's how to use ADRs effectively, and how to connect them to your AI coding workflow."
+cluster: "Teams & Architecture Docs"
+keywords: ["architecture decision records", "adr guide", "technical decision documentation", "adr ai agents"]
+primaryKeyword: "architecture decision records"
+author: "Context Keeper Team"
+datePublished: "2026-07-24"
+readingTime: 12
+heroImage:
+  src: "https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d"
+  alt: "Architecture blueprints and decision documents on a desk, representing Architecture Decision Records"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "architecture blueprints technical documents"
+faq:
+  - q: "What is an Architecture Decision Record (ADR)?"
+    a: "An ADR is a short document that captures a significant architectural decision made within a project — the context, the decision, the options considered, and the consequences. ADRs are stored as files in your project repository."
+  - q: "Why are ADRs especially important for AI-agent-driven development?"
+    a: "AI agents make or influence hundreds of small architectural decisions per session. Without ADRs, this tribal knowledge disappears when sessions end. ADRs create a permanent, searchable record that helps future agents (and humans) understand why the codebase looks the way it does."
+  - q: "How do ADRs relate to CLAUDE.md?"
+    a: "ADRs are the detailed record; CLAUDE.md is the active summary. Think of CLAUDE.md as an auto-generated executive summary of your most relevant ADRs, always fresh for the next agent session."
+  - q: "How many ADRs should a project have?"
+    a: "There's no fixed number. Capture decisions that were non-obvious, had significant alternatives, or that future developers (or AI agents) might question. A project might have 5–100+ ADRs depending on its age and complexity."
+relatedSlugs:
+  - "adr-templates-and-examples"
+  - "how-to-document-architectural-decisions-automatically"
+  - "how-to-persist-architectural-decisions"
+  - "documentation-ai-agents-read"
+draft: false
+---
+
+<Tldr>
+- ADR = a short record of a significant architecture decision + context + alternatives
+- Especially valuable with AI agents: they make dozens of decisions per session
+- ADRs → CLAUDE.md relationship: detailed record → active agent summary
+- Store ADRs as Markdown files in /docs/decisions/ under version control
+</Tldr>
+
+## What Are Architecture Decision Records?
+
+**An Architecture Decision Record (ADR) is a short document that captures a significant architectural decision made within a project — including the context that led to the decision, the alternatives considered, the decision itself, and its consequences.** ADRs are stored as Markdown files in your project repository, living alongside the code they describe.
+
+The format was introduced by Michael Nygard and has become the gold standard for documenting the *why* behind technical choices. Unlike code comments (which describe *what* code does) and documentation (which describes *how* to use a system), ADRs capture *why* a system was built this way — information that would otherwise exist only in the memories of the people who built it.
+
+In 2026, ADRs have taken on new urgency: AI coding agents make or influence dozens of architectural micro-decisions per session, and without a record of those decisions, they are lost when the session ends.
+
+## The ADR Format
+
+A minimal but complete ADR has five sections:
+
+```md
+# ADR-001: Use PostgreSQL Over MongoDB
+
+## Status
+Accepted — 2026-03-01
+
+## Context
+We need a primary database for user data, project records, and billing history.
+The data is highly relational (users → projects → decisions → sessions).
+The team has strong PostgreSQL experience. MongoDB was considered for flexibility.
+
+## Decision
+Use PostgreSQL via Prisma ORM.
+
+## Alternatives Considered
+- **MongoDB**: rejected because the relational data model is a better fit than
+  document storage, and JOIN-heavy queries are simpler in SQL.
+- **SQLite**: rejected because we anticipate multiple concurrent write processes
+  (web app + daemon sync) that would hit SQLite's write locking.
+
+## Consequences
+- Prisma migrations required for schema changes (minor overhead)
+- Strong type safety via generated Prisma client
+- Relational integrity enforced at the database level (foreign keys, constraints)
+```
+
+This document is stored at `docs/decisions/ADR-001-postgres-over-mongodb.md` and committed to version control. It will be there when you return to this project in 6 months, when a new developer joins, and when an AI agent asks "why are we using PostgreSQL?"
+
+## Why ADRs Matter More in the Age of AI Agents
+
+The ADR format was valuable before AI coding agents. In 2026, it's essential — for two reasons:
+
+### AI Agents Make Dozens of Decisions Per Session
+
+A typical Claude Code session might involve:
+- Choosing between two library options
+- Deciding on an API response shape
+- Picking a naming convention for a new module
+- Resolving a trade-off between performance and simplicity
+
+Without ADRs, these decisions exist only in the session transcript. When the session ends, the context is gone. The next session will face the same trade-offs without the benefit of the reasoning that was already done.
+
+**ADRs are how you make the agent's reasoning permanent.**
+
+### AI Agents Need to Know Why, Not Just What
+
+When a new session starts, an AI agent can read your codebase and understand *what* it does. But it cannot understand *why* without documentation. It doesn't know:
+
+- Why you chose `Option A` over `Option B`
+- What alternatives you explicitly rejected and why
+- What constraints existed that shaped the decision
+
+Without this context, the agent will re-propose rejected alternatives, make decisions that contradict established patterns, or (worse) reverse past decisions confidently. ADRs give the agent the context to work with your system instead of against it.
+
+This is the same relationship described in our [context rot](/blog/what-is-context-rot-in-ai-coding-agents) guide: persistent decision records are the antidote to the agent "forgetting" why the system is the way it is.
+
+<FigureImage src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40" alt="Person writing technical documentation at a desk with architectural diagrams — representing the ADR documentation practice" width={1200} height={630} credit="Unsplash" />
+
+## ADRs vs CLAUDE.md: What Goes Where
+
+Both ADRs and `CLAUDE.md` capture project decisions, but they serve different purposes:
+
+| | ADR | CLAUDE.md |
+|---|---|---|
+| **Purpose** | Detailed record with full context | Active agent brief |
+| **Length** | Long (50–300 words) | Short (agent reads it every session) |
+| **Audience** | Future humans + AI agents | Current AI agent session |
+| **Location** | `docs/decisions/ADR-NNN-*.md` | Project root `CLAUDE.md` |
+| **Update frequency** | When decisions change | Frequently (after each significant session) |
+| **Alternatives** | Yes (full alternative analysis) | No (just the conclusion) |
+
+Think of it this way: **ADRs are the historical record; `CLAUDE.md` is the living summary.**
+
+A well-maintained `CLAUDE.md` might say: "Auth: Auth0 (see ADR-003)." The ADR contains the full story — the Passport.js alternative that was rejected, the CSRF risk that ruled out JWT in localStorage, the Auth0 pricing model that was acceptable at this scale. The `CLAUDE.md` entry is the conclusion; the ADR is the reasoning.
+
+For practical templates and examples, see [ADR Templates and Examples](/blog/adr-templates-and-examples).
+
+## When to Write an ADR
+
+Not every decision warrants an ADR. The signal for writing one is: **would a competent engineer joining this project question this decision?**
+
+Write an ADR when:
+- You chose between two or more real alternatives (the alternatives had genuine merits)
+- The decision is non-obvious or counter-intuitive
+- The decision has significant consequences if reversed
+- You explicitly rejected an approach that seems like the obvious choice
+
+Don't write an ADR for:
+- Trivial decisions (which utility function to use for date formatting)
+- Decisions with no real alternatives (we're using the framework the entire team already knows)
+- Decisions so standard they need no explanation (using Git for version control)
+
+A mature project might have 20–100 ADRs. A new project might have 5–10. There's no correct number — the goal is to capture the decisions that future humans (and AI agents) would otherwise have to reverse-engineer or re-investigate.
+
+## ADRs in a Real Project: A Worked Example
+
+Here's how ADR creation actually works in a Claude Code session:
+
+**Session:** Building authentication for a Next.js app.
+
+Claude Code suggests: "I'll implement this with Passport.js and local sessions."
+
+You respond: "Actually, we're going with Auth0. It's managed, handles the compliance requirements, and the team doesn't want to maintain a session store."
+
+Claude Code implements Auth0 authentication. At the end of the session:
+
+**You write (or capture automatically):**
+
+```md
+# ADR-003: Auth0 for Authentication
+
+## Status
+Accepted — 2026-03-15
+
+## Context
+Needed authentication for the web app. Options: Auth0, Passport.js + local sessions,
+NextAuth.js. Compliance requirements (SOC 2 in roadmap) favor a managed solution.
+Team lacks session management expertise. API tokens needed for daemon authentication.
+
+## Decision
+Auth0 via `@auth0/nextjs-auth0` v3.
+
+## Alternatives
+- **Passport.js**: rejected — requires managing session store, more maintenance burden
+- **NextAuth.js**: rejected — OAuth focus doesn't fit API token auth model; less complete for our needs
+- **JWT in localStorage**: rejected — XSS risk
+
+## Consequences
+- Auth0 pricing ($0 for under 7k MAU, then tiered) — acceptable at current scale
+- Managed session handling — no session store to maintain
+- API token auth supported via Auth0 Machine-to-Machine
+```
+
+This document now contains the reasoning that kept the team from proposing Passport.js again in three months. And when a new Claude Code session asks why the project uses Auth0, it can read this ADR and immediately understand the context — without a 10-minute re-explanation.
+
+## Automating ADR Capture
+
+The biggest obstacle to ADR adoption is the discipline to write them. Developers in the middle of a deep session rarely stop to document their decisions.
+
+There are two approaches to solving this:
+
+### Manual Post-Session Review
+
+After each significant session, review the conversation for decisions made and write ADRs for the significant ones. This works but requires consistent discipline.
+
+### Automated Capture
+
+Tools like [Context Keeper](/) analyze Claude Code session transcripts and automatically extract architectural decisions, writing them to a structured format. The captured decisions can then be reviewed and converted to formal ADRs with minimal effort.
+
+This is the [How to Document Architectural Decisions Automatically](/blog/how-to-document-architectural-decisions-automatically) approach — the capture happens in the flow of work, not after it.
+
+## Storing and Organizing ADRs
+
+The standard location is `docs/decisions/` in your project root. Naming convention: `ADR-NNN-short-slug.md`, where `NNN` is a zero-padded sequential number.
+
+```
+docs/
+  decisions/
+    ADR-001-postgres-over-mongodb.md
+    ADR-002-nextjs-app-router.md
+    ADR-003-auth0-authentication.md
+    ADR-004-prisma-over-drizzle.md
+    ...
+```
+
+Keep an index file at `docs/decisions/README.md` that lists all ADRs with their status (Proposed, Accepted, Deprecated, Superseded). When an ADR is superseded, don't delete it — link to the new one. The history of why a decision changed is itself valuable.
+
+<FigureImage src="https://images.unsplash.com/photo-1497366216548-37526070297c" alt="Office whiteboard with architectural diagrams and decision flow — representing the collaborative architecture decision process" width={1200} height={630} credit="Unsplash" />
+
+## ADRs and Team Knowledge Transfer
+
+ADRs are valuable for individual developers. For teams, they're essential.
+
+When a developer who owned a major architectural decision leaves the company, their reasoning leaves with them — unless it's in ADRs. New team members joining months later face an undocumented codebase full of non-obvious choices.
+
+For AI-agent-augmented teams, this problem is compounded: the agent has no institutional memory. Every new developer's first session with the codebase will face the same questions without ADRs: "Why is this in PostgreSQL?" "Why Auth0 and not NextAuth?" "What's this Result(T, E) pattern everywhere?"
+
+ADRs transform institutional knowledge from a person-dependent liability into a project-level asset. See [Onboarding New Developers with AI-Readable Docs](/blog/onboarding-developers-ai-readable-docs) and [Preventing Knowledge Loss When Developers Leave](/blog/preventing-knowledge-loss-developers-leave) for how this plays out in practice.
+
+## Key Takeaways
+
+- An ADR captures a decision, its context, alternatives rejected, and consequences — not just what was decided but why
+- ADRs are especially critical with AI agents: agents make dozens of decisions per session that disappear when sessions end
+- ADRs are the detailed record; `CLAUDE.md` is the active summary for current agent sessions
+- Write ADRs for non-obvious decisions with real alternatives — not for every trivial choice
+- Store at `docs/decisions/ADR-NNN-*.md`; never delete superseded ADRs (they preserve history)
+- Automate capture to remove the discipline bottleneck; review and formalize after
+- ADRs turn institutional knowledge into a project asset that survives team changes
+
+Related: [ADR Templates and Examples](/blog/adr-templates-and-examples) · [How to Document Architectural Decisions Automatically](/blog/how-to-document-architectural-decisions-automatically) · [How to Persist Architectural Decisions Across AI Sessions](/blog/how-to-persist-architectural-decisions)

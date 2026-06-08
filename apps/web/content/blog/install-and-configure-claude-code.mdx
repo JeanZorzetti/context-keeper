@@ -1,0 +1,264 @@
+---
+title: "How to Install and Configure Claude Code (Step-by-Step)"
+slug: "install-and-configure-claude-code"
+description: "A complete installation guide for Claude Code — from installing the CLI to configuring your API key, setting up CLAUDE.md, and running your first agent session."
+cluster: "Claude Code"
+keywords: ["install claude code", "claude code setup", "claude code installation", "configure claude code"]
+primaryKeyword: "install claude code"
+author: "Context Keeper Team"
+datePublished: "2026-06-23"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1555066931-4365d14bab8c"
+  alt: "Terminal window showing npm install command for Claude Code CLI installation"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "terminal npm install command line"
+faq:
+  - q: "What are the system requirements for Claude Code?"
+    a: "Claude Code requires Node.js 18+ and an Anthropic API key (or Claude.ai Pro subscription). It works on macOS, Linux, and Windows (via WSL)."
+  - q: "How do I install Claude Code?"
+    a: "Run 'npm install -g @anthropic-ai/claude-code' in your terminal. Then authenticate with 'claude' to connect your API key or Claude.ai account."
+  - q: "Do I need an API key to use Claude Code?"
+    a: "You can use Claude.ai Pro subscription (which includes Claude Code access) or an Anthropic API key. Pro subscription is often cheaper for moderate usage; API keys are better for heavy or automated use."
+  - q: "How do I update Claude Code to the latest version?"
+    a: "Run 'npm update -g @anthropic-ai/claude-code' or reinstall with 'npm install -g @anthropic-ai/claude-code'."
+relatedSlugs:
+  - "claude-code-complete-guide"
+  - "what-is-a-claude-md-file"
+  - "claude-code-best-practices"
+  - "debugging-common-claude-code-errors"
+draft: false
+---
+
+<Tldr>
+- Install: `npm install -g @anthropic-ai/claude-code`
+- Authenticate: `claude` → connect API key or Pro account
+- Set up CLAUDE.md at your project root before first use
+- Takes under 10 minutes to have a productive first session
+</Tldr>
+
+## What You'll Need
+
+Before installing Claude Code, confirm you have:
+
+- **Node.js 18 or later** (Node 20 LTS recommended). Check with `node --version`.
+- **npm 9+** (comes with Node 20). Check with `npm --version`.
+- **An Anthropic account** — either a Claude.ai Pro/Team subscription or an API key from console.anthropic.com.
+- A Unix-like terminal: macOS Terminal, Linux bash/zsh, or Windows WSL2.
+
+Claude Code does not support Windows CMD or PowerShell natively. WSL2 (Windows Subsystem for Linux) works well.
+
+## Step 1: Install the Claude Code CLI
+
+Run this command in your terminal:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Verify the install:
+
+```bash
+claude --version
+```
+
+You should see a version number like `1.x.x`. If you get "command not found," your global npm bin directory is not in your PATH. Fix it with:
+
+```bash
+export PATH="$(npm config get prefix)/bin:$PATH"
+```
+
+Add this line to your `~/.bashrc` or `~/.zshrc` to make it permanent.
+
+## Step 2: Authenticate
+
+Run `claude` to start the authentication flow:
+
+```bash
+claude
+```
+
+On first run, Claude Code will ask how you want to authenticate:
+
+**Option A — Claude.ai subscription (recommended for most developers):**
+Claude Code opens a browser window for you to log in with your Claude.ai Pro or Team account. Your subscription's included usage covers Claude Code sessions up to the plan limits.
+
+**Option B — Anthropic API key:**
+```bash
+export ANTHROPIC_API_KEY=sk-ant-api03-...
+```
+
+Add this to your shell profile (`~/.zshrc` or `~/.bashrc`). API key auth is usage-based — you pay per token consumed. Better for heavy or automated use.
+
+<FigureImage src="https://images.unsplash.com/photo-1563986768609-322da13575f3" alt="Authentication screen on a laptop showing secure login process for Claude Code setup" width={1200} height={630} credit="Unsplash" />
+
+## Step 3: Run Your First Session
+
+Navigate to a project directory and start Claude Code:
+
+```bash
+cd ~/projects/my-app
+claude
+```
+
+Claude Code reads any existing `CLAUDE.md` in the project root, then waits for your first instruction. Try:
+
+```
+What does this project do? Read the package.json and main entry point and give me a brief summary.
+```
+
+Claude Code will use its `Read` tool to look at your files and respond with a summary. You've just run your first Claude Code session.
+
+For a one-off command without an interactive session:
+
+```bash
+claude "Fix the TypeScript errors in src/api/auth.ts and run the tests"
+```
+
+## Step 4: Set Up CLAUDE.md
+
+`CLAUDE.md` is the most important configuration file for Claude Code. It's read automatically at the start of every session and gives the agent your project's architectural context.
+
+Create it at your project root:
+
+```bash
+touch CLAUDE.md
+```
+
+Start with a minimal version:
+
+```md
+# Project: My App
+
+## Tech Stack
+- Framework: [Next.js / Express / etc.]
+- Language: TypeScript 5.x, strict mode
+- Database: [PostgreSQL / SQLite / etc.]
+
+## Key Commands
+- Dev: npm run dev
+- Test: npm run test
+- Build: npm run build
+
+## Architecture Notes
+- [Add your most important architectural decisions here]
+```
+
+You'll expand this as you work. The goal is to capture decisions that would take more than 30 seconds to re-explain. See [How to Write a Great CLAUDE.md](/blog/how-to-write-a-great-claude-md) for a complete guide with templates.
+
+## Step 5: Configure Project Settings
+
+Claude Code looks for project-level settings in `.claude/settings.json`. Create this directory and file:
+
+```bash
+mkdir .claude
+touch .claude/settings.json
+```
+
+A useful starting configuration:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git log *)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(rm -rf *)"
+    ]
+  }
+}
+```
+
+This allows Claude Code to run npm scripts and read-only git commands, but requires your approval before pushing or deleting files. Adjust the allow/deny lists to match your risk tolerance.
+
+## Step 6: Set Up Hooks (Optional but Recommended)
+
+Hooks automate actions at Claude Code lifecycle events. Add them to `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npm run lint --fix 2>/dev/null || true" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This hook automatically runs your linter after every file edit. The `|| true` prevents hook failures from blocking Claude Code if the linter errors on a partially-written file.
+
+For more hook patterns, see [Claude Code Hooks Explained](/blog/claude-code-hooks-explained).
+
+## Step 7: Connect MCP Servers (Optional)
+
+MCP servers extend Claude Code's capabilities to databases, GitHub, and more. Create `.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/path/to/your/project"
+      ]
+    }
+  }
+}
+```
+
+See [Claude Code MCP Servers](/blog/claude-code-mcp-servers) for a full MCP setup guide.
+
+## Configuration Reference
+
+| File | Location | Purpose |
+|---|---|---|
+| `CLAUDE.md` | Project root | Project context, read every session |
+| `.claude/settings.json` | Project `.claude/` | Permissions, hooks, tool config |
+| `.claude/mcp.json` | Project `.claude/` | MCP server connections |
+| `~/.claude/settings.json` | Home directory | Personal global settings |
+| `~/.claude/commands/` | Home directory | Personal custom slash commands |
+| `.claude/commands/` | Project `.claude/` | Project-specific slash commands |
+
+## Common First-Time Issues
+
+**"claude: command not found" after install:**
+Your npm global bin is not in PATH. Run `npm config get prefix` to find the prefix, then add `<prefix>/bin` to your PATH.
+
+**Authentication fails or browser doesn't open:**
+Try `claude config auth` to re-run the auth flow. If you're on a headless server, use API key auth instead of browser auth.
+
+**High token costs on first session:**
+Claude Code is exploring your codebase to understand it. This is the "cold start" cost. After a good `CLAUDE.md` is in place, future sessions will consume far fewer tokens because the agent already has the context it needs.
+
+**Claude Code suggests the wrong patterns:**
+Your `CLAUDE.md` is incomplete. Add the violated convention explicitly — "We use X, not Y" — and future sessions will respect it.
+
+**Build errors after Claude Code edits:**
+Add a `PostToolUse` hook to run `npm run build` or `npm run typecheck` after file edits. This catches errors immediately rather than at session end.
+
+## Key Takeaways
+
+- Install with `npm install -g @anthropic-ai/claude-code`; verify with `claude --version`
+- Authenticate via Claude.ai subscription (easier) or API key (more control)
+- `CLAUDE.md` is your most important file — create it before your first real session
+- `.claude/settings.json` controls permissions and hooks
+- Permission rules prevent Claude Code from running destructive commands without approval
+- The cold-start token cost is real — a good `CLAUDE.md` amortizes it across all future sessions
+
+With this setup, Claude Code starts every session with your full project context and operates within boundaries you've defined. That's the foundation for productive, safe AI-agent-driven development.
+
+Related: [Claude Code: The Complete Guide](/blog/claude-code-complete-guide) · [How to Write a Great CLAUDE.md](/blog/how-to-write-a-great-claude-md) · [Debugging Common Claude Code Errors](/blog/debugging-common-claude-code-errors)

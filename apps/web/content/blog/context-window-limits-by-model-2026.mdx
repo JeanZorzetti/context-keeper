@@ -1,0 +1,193 @@
+---
+title: "Context Window Limits by Model (Claude, GPT, Gemini) 2026"
+slug: "context-window-limits-by-model-2026"
+description: "A complete, up-to-date comparison of context window sizes across Claude, GPT-4o, Gemini, and other major LLMs used in AI coding tools — with practical implications for developers."
+cluster: "Context Rot & AI Agent Memory"
+keywords: ["context window comparison", "llm context window 2026", "claude context window", "gpt-4o context window", "gemini context window"]
+primaryKeyword: "context window comparison"
+author: "Context Keeper Team"
+datePublished: "2026-06-15"
+readingTime: 7
+heroImage:
+  src: "https://images.unsplash.com/photo-1551288049-bebda4e38f71"
+  alt: "Data comparison chart on screen showing AI model context window sizes for Claude, GPT, and Gemini"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "data chart comparison screen"
+faq:
+  - q: "Which AI model has the largest context window in 2026?"
+    a: "As of 2026, Google Gemini 1.5 Pro leads with a 1 million token context window in preview. Claude Sonnet 4.6 supports 200,000 tokens. GPT-4o supports 128,000 tokens."
+  - q: "Does a larger context window mean better performance?"
+    a: "Not necessarily. Very long contexts can cause 'lost in the middle' effects where models lose track of information in the middle of very long inputs. Structured, compressed context often outperforms raw size."
+  - q: "Does context window size affect Claude Code quality?"
+    a: "Yes — larger windows let Claude Code hold more of your codebase in view simultaneously. But for multi-session work, context window size is secondary to having good persistent context files."
+relatedSlugs:
+  - "how-llm-context-windows-work"
+  - "context-compression-techniques"
+  - "claude-code-complete-guide"
+  - "best-ai-coding-agents-2026"
+draft: false
+---
+
+<Tldr>
+- Claude: 200k tokens | GPT-4o: 128k | Gemini 1.5 Pro: 1M (preview)
+- Bigger isn't always better — structure matters more than raw size
+- For multi-session work, persistent context files matter more than window size
+</Tldr>
+
+## Context Window Size: The Complete 2026 Model Comparison
+
+**A context window is the maximum amount of text an LLM can process in a single request — and in 2026, the range spans from 128,000 tokens to over 1,000,000.** Every AI coding tool runs on one of these models. Understanding their actual limits — and the practical implications for your workflow — is essential for choosing the right tool and setting appropriate expectations.
+
+This reference covers the current context window sizes for Claude, GPT, Gemini, and other models used in coding tools, plus what those sizes mean in practice.
+
+## 2026 Context Window Comparison Table
+
+| Model | Provider | Context Window | Approx. Pages | Used In |
+|---|---|---|---|---|
+| Claude Opus 4.8 | Anthropic | 200,000 tokens | ~650 pages | Claude Code, API |
+| Claude Sonnet 4.6 | Anthropic | 200,000 tokens | ~650 pages | Claude Code, API |
+| Claude Haiku 4.5 | Anthropic | 200,000 tokens | ~650 pages | Claude Code, API |
+| GPT-4o | OpenAI | 128,000 tokens | ~415 pages | Cursor, API |
+| GPT-4o mini | OpenAI | 128,000 tokens | ~415 pages | Cursor, API |
+| o3 | OpenAI | 200,000 tokens | ~650 pages | API |
+| Gemini 1.5 Pro | Google | 1,000,000 tokens | ~3,250 pages | Windsurf, API |
+| Gemini 2.0 Flash | Google | 1,000,000 tokens | ~3,250 pages | API |
+| Gemini 2.5 Pro | Google | 1,000,000 tokens | ~3,250 pages | API |
+| Llama 3.3 70B | Meta | 128,000 tokens | ~415 pages | Cline (local), API |
+| Mistral Large | Mistral | 128,000 tokens | ~415 pages | Cline, API |
+| DeepSeek V3 | DeepSeek | 128,000 tokens | ~415 pages | Cline, API |
+
+*As of 2026. Models and context window sizes update frequently — check provider documentation for the latest.*
+
+## What These Token Counts Mean for Code
+
+Token counts sound abstract until you see what they mean for actual source code. Here's a practical breakdown:
+
+| Content type | Tokens |
+|---|---|
+| 100-word English paragraph | ~130 tokens |
+| Single line of TypeScript | ~8–15 tokens |
+| 100-line source file | ~500–1,500 tokens |
+| 1,000-line source file | ~5,000–15,000 tokens |
+| 50-file Next.js codebase | ~75,000–200,000 tokens |
+| CLAUDE.md (300 words) | ~400 tokens |
+| 2-hour coding session transcript | ~30,000–80,000 tokens |
+
+At 200,000 tokens, Claude can hold a complete 30–50 file codebase in context simultaneously — in theory. In practice, conversation history and tool outputs accumulate fast. See [How LLM Context Windows Actually Work](/blog/how-llm-context-windows-work) for a detailed breakdown of how sessions consume tokens.
+
+<FigureImage src="https://images.unsplash.com/photo-1551288049-bebda4e38f71" alt="Data comparison chart on screen comparing context window sizes across Claude, GPT, and Gemini models in 2026" width={1200} height={630} credit="Unsplash" />
+
+## Claude Context Window: 200,000 Tokens
+
+All current Claude models (Opus 4.8, Sonnet 4.6, Haiku 4.5) share a 200,000-token context window as of 2026, per [Anthropic's official documentation](https://docs.anthropic.com/en/docs/about-claude/models).
+
+**What 200k tokens can hold:**
+- ~150,000 words of English text
+- ~500 pages of documentation
+- A mid-size Next.js codebase (20–30 files) plus hours of conversation
+
+For Claude Code specifically, the 200,000-token window is consistent across all Claude models available in the CLI. Claude Code automatically manages the conversation within this limit, warning you when approaching the boundary.
+
+**Practical implication:** For most individual developer projects, 200k tokens is sufficient. You're unlikely to hit hard limits in a typical 2–4 hour session. The more common problem is [context rot](/blog/what-is-context-rot-in-ai-coding-agents) from early content being deprioritized — not hard truncation.
+
+## GPT-4o Context Window: 128,000 Tokens
+
+GPT-4o and GPT-4o mini support 128,000 tokens, per [OpenAI's documentation](https://platform.openai.com/docs/models/gpt-4o). This is the model powering Cursor's default AI features (with Claude options also available as of 2026).
+
+128,000 tokens is substantial — roughly:
+- ~95,000 words
+- ~320 pages
+- A full conversation transcript from a 1–2 hour session
+
+**Practical implication:** For typical Cursor sessions, 128k tokens is rarely the limiting factor. The more common friction is Cursor's per-request context management, not the model's absolute window limit.
+
+## Gemini Context Window: 1,000,000 Tokens
+
+Gemini 1.5 Pro, Gemini 2.0 Flash, and Gemini 2.5 Pro support 1,000,000-token context windows — roughly 5x larger than Claude's current windows, per [Google's AI documentation](https://ai.google.dev/gemini-api/docs/models).
+
+**What 1M tokens can hold:**
+- ~750,000 words
+- ~2,500 pages
+- An entire large enterprise codebase in one context
+- Multiple projects' worth of context simultaneously
+
+Windsurf uses Gemini models as one of its backend options, which can be configured in its settings.
+
+**Practical implication:** Gemini's 1M window is transformative for specific use cases — feeding an entire large repository, processing extensive documentation corpora, or reviewing thousands of lines of code in one pass. For most day-to-day coding tasks, you won't notice a quality difference between 128k and 1M.
+
+<FigureImage src="https://images.unsplash.com/photo-1460925895917-afdab827c52f" alt="Abstract visualization of large versus small data containers representing the scale difference between Gemini and GPT context windows" width={1200} height={630} credit="Unsplash" />
+
+## Why Bigger Isn't Always Better
+
+A persistent misconception: larger context window = better AI coding performance. The reality is more nuanced.
+
+**The "lost in the middle" problem:** LLMs apply attention across all tokens in the window, but not uniformly. Research consistently shows that models pay more attention to content at the very beginning and end of the context, with the middle receiving less focus. At 1M tokens, "lost in the middle" becomes "lost in the middle 800,000 tokens."
+
+**Quality vs. capacity:** Claude Opus 4.8 and Gemini 2.5 Pro are both capable models, but they have different strengths in reasoning, code generation, and instruction following — independent of their context window sizes. A smaller window on a higher-quality model often outperforms a larger window on a weaker one.
+
+**Structured context matters more:** For coding sessions specifically, the quality and structure of what's in the context matters more than how much fits. A well-written 400-token [CLAUDE.md](/blog/what-is-a-claude-md-file) with specific architectural decisions often produces better results than dumping 50,000 tokens of unstructured code into context.
+
+**Cost:** Larger context windows mean larger token counts per request. At Gemini API pricing, a 1M-token request costs significantly more than a focused 20,000-token request. For automated workflows, context window efficiency matters economically.
+
+## Context Window Comparison by Use Case
+
+| Use case | Minimum needed | Recommended | Notes |
+|---|---|---|---|
+| Single file editing | ~10k tokens | 32k | Overkill isn't harmful |
+| Feature development (5–10 files) | ~50k tokens | 128k | GPT-4o, Claude Haiku 4.5 |
+| Full-stack feature review | ~100k tokens | 200k | Claude models |
+| Full codebase analysis | ~200k+ tokens | 1M | Gemini models shine here |
+| Multi-project context | ~300k+ tokens | 1M | Gemini; or use context files |
+| Long documentation generation | ~100k tokens | 200k | Claude recommended for quality |
+
+## Context Window vs. Output Window
+
+An often-confused distinction: the **context window** (how much the model reads in) differs from the **output window** (how much it can write in one response).
+
+Claude's maximum output is currently 32,000 tokens per response — not 200,000. GPT-4o's maximum output is 16,384 tokens. Gemini's varies by model.
+
+This means: even with a 1M-token context window, a model can't produce a 100,000-token response in one go. For long content generation, you need multiple API calls.
+
+For AI coding tools, this distinction matters when generating large files. Claude Code handles this by breaking large generation tasks into multiple rounds — it reads all context at once but writes in steps.
+
+## What Context Window Size Means for Multi-Session Work
+
+Here's the critical insight: **for multi-session work, persistent context management matters more than window size.**
+
+No matter how large the context window — 200k, 1M, or larger — it resets to zero when the session ends. The architectural decisions from yesterday's session are gone. See [Why Claude Code Forgets Your Architecture Between Sessions](/blog/why-claude-code-forgets-your-architecture).
+
+The solution is persistent context files (`CLAUDE.md`, `AGENTS.md`), not larger windows. These files pre-load into every session regardless of window size, ensuring continuity across the session boundary.
+
+**Practical hierarchy for multi-session work:**
+1. Write and maintain `CLAUDE.md` (survives session reset regardless of window size)
+2. Use automatic capture to keep decisions current
+3. Choose the appropriate model based on session complexity and budget
+
+Context window size determines what you can work with in a single session. Context files determine what you can build across many sessions.
+
+## Choosing the Right Model for Your Coding Tool
+
+If you're using Claude Code, you select from Claude's model family — all share the 200k window:
+- **Haiku 4.5:** fastest, cheapest, sufficient for simple tasks and high-volume automation
+- **Sonnet 4.6:** balanced; the default for most coding tasks
+- **Opus 4.8:** highest reasoning capability; use for complex architecture work, debugging hard problems
+
+If you're using Cursor, the model selector lets you switch between GPT-4o (128k) and Claude models (200k), plus other options.
+
+If you're using Cline or an API-based setup, you can configure any supported model — including Gemini for large-codebase work.
+
+See [Best AI Coding Agents in 2026](/blog/best-ai-coding-agents-2026) for a full tool-and-model comparison.
+
+## Key Takeaways
+
+- Claude (Opus 4.8, Sonnet 4.6, Haiku 4.5): 200,000 tokens as of 2026
+- GPT-4o and GPT-4o mini: 128,000 tokens
+- Gemini 1.5/2.0/2.5 Pro and Flash: 1,000,000 tokens
+- Bigger context windows help for large-codebase analysis and long sessions; they don't inherently improve per-task reasoning quality
+- The "lost in the middle" problem means models pay less attention to mid-context content — structured, compressed context outperforms raw size
+- For multi-session work, persistent context files (CLAUDE.md) matter more than window size — sessions always reset to zero
+- Output window (how much a model writes per response) is separate from context window and significantly smaller
+
+Related: [How LLM Context Windows Actually Work](/blog/how-llm-context-windows-work) · [Context Compression Techniques for Long Agent Sessions](/blog/context-compression-techniques) · [Best AI Coding Agents in 2026: Compared](/blog/best-ai-coding-agents-2026)

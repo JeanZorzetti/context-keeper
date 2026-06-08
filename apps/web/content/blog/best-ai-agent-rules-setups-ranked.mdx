@@ -1,0 +1,234 @@
+---
+title: "The Best CLAUDE.md and Rules File Setups, Ranked"
+slug: "best-ai-agent-rules-setups-ranked"
+description: "We analyzed dozens of CLAUDE.md and AI agent rules files from open-source projects. Here are the patterns that consistently produce better AI coding sessions."
+cluster: "AI Coding Tools & Comparisons"
+keywords: ["ai agent rules file", "best claude.md", "best cursorrules", "ai agent rules examples"]
+primaryKeyword: "ai agent rules file"
+author: "Context Keeper Team"
+datePublished: "2026-07-15"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b"
+  alt: "Ranked list and scoring on a notebook representing best AI agent rules file setups"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "ranking list notebook scoring"
+faq:
+  - q: "What makes a rules file highly effective for AI coding agents?"
+    a: "The best rules files share these traits: they're concise (under 1000 tokens), specific (concrete examples, not vague guidelines), structured (clear sections), and current (updated after major decisions)."
+  - q: "What's the most common mistake in CLAUDE.md files?"
+    a: "Being too vague. 'Write clean code' does nothing. 'Use early returns to avoid nested if statements' changes behavior. Specificity is everything."
+  - q: "Should I include code examples in my CLAUDE.md?"
+    a: "Yes, for the most important patterns. A 5-line code example is worth 50 words of description. But keep examples short — long code blocks consume significant context."
+relatedSlugs:
+  - "how-to-write-a-great-claude-md"
+  - "agents-md-vs-claude-md"
+  - "cursor-rules-setup"
+  - "claude-code-best-practices"
+draft: false
+---
+
+<Tldr>
+- Best rules files: concise, specific, structured, current
+- Worst patterns: vague guidelines, stale decisions, no examples
+- Rank 1: short + concrete + code examples + explicit anti-patterns
+- Update quarterly minimum; use auto-capture for continuous freshness
+</Tldr>
+
+## What Makes a Rules File Work?
+
+A `CLAUDE.md`, `AGENTS.md`, or `.cursorrules` file is only as good as its content. We've analyzed dozens of rules files from open-source projects, developer conferences, and shared community examples. The patterns that consistently produce better AI sessions — and the antipatterns that reliably produce worse ones — are clear.
+
+The underlying principle: **a rules file is not documentation for humans. It is executable instructions for an AI agent.** What sounds like good human documentation (high-level, principled, readable) often makes poor agent instructions. What makes good agent instructions (specific, concrete, constraint-focused) often sounds harsh and technical to humans.
+
+## The Ranking Framework
+
+We evaluated rules files across four dimensions:
+
+1. **Specificity** — does it produce deterministic agent behavior, or is it vague enough that the agent must interpret?
+2. **Conciseness** — does it deliver maximum value per token?
+3. **Coverage** — does it cover the decisions that matter most for this project?
+4. **Freshness** — is it current with the actual state of the project?
+
+## Rank 5: The Empty or Absent Rules File
+
+**The worst setup: no rules file at all.**
+
+Without a `CLAUDE.md`, the agent starts every session cold. It has no project context, no pattern awareness, no constraints. The cost in re-explanation, wrong suggestions, and pattern violations adds up to hours of wasted time per week.
+
+If you use any AI coding tool for more than occasional tasks on the same project, the absence of a rules file is an unambiguous mistake.
+
+**Common reason for absence:** Developers don't realize the impact, or they created the file once and never updated it, so it became stale and they stopped trusting it.
+
+## Rank 4: The Vague Guidelines File
+
+**Pattern:** A rules file that reads like a coding philosophy document.
+
+```md
+# CLAUDE.md
+
+Write clean, maintainable code. Follow best practices. 
+Prioritize readability. Consider edge cases. Write tests.
+Use modern TypeScript patterns. Keep functions small.
+```
+
+**Why it fails:** Every line of this file is something the model already knows and already tries to do by default. None of it changes agent behavior because none of it is specific enough to override defaults.
+
+"Write clean code" is not an instruction. "Use early returns instead of nested if statements" is an instruction.
+
+**The tell:** If any line in your rules file could appear in any project's rules file without editing, it's not providing project-specific value.
+
+## Rank 3: The Comprehensive but Bloated File
+
+**Pattern:** A rules file that tries to document everything — long enough to be exhaustive, but so long that it becomes expensive to load and hard for the agent to use effectively.
+
+The file might be technically accurate but 3,000 tokens. Most of the content gets less attention as the file grows; the most impactful instructions are the early ones.
+
+**Why it underperforms:**
+- Every session loads 3,000 tokens of context just for the rules file
+- Important instructions compete with less important ones for attention
+- Update discipline breaks down because the file is unwieldy
+
+**Better approach:** 80/20 rule for context files. Identify the 20% of decisions that cause 80% of the wrong behavior, document those specifically, and leave the rest out.
+
+<FigureImage src="https://images.unsplash.com/photo-1506784983877-45594efa4cbe" alt="Ranked comparison cards and evaluation criteria representing the best AI agent rules file setups" width={1200} height={630} credit="Unsplash" />
+
+## Rank 2: The Good Specific Rules File
+
+**Pattern:** Clear, specific, structured, project-specific. Under 600 words. Covers the decisions that actually matter.
+
+```md
+# Project: Commerce API
+
+## Stack
+- Next.js 15.3 App Router, TypeScript 5.8 strict, PostgreSQL via Prisma 7
+- Auth: Auth0 v3 — NOT NextAuth. Session-based, not JWT.
+- Testing: Vitest. Tests co-located as [file].test.ts
+
+## Commands
+- Dev: npm run dev (port 3001)
+- Test: npm run test
+- Build: npm run build
+- DB: npm run db:migrate | npm run db:generate
+
+## Patterns
+- API error: return { error: "message" } with HTTP status
+- API success: return { data: T } 
+- DB access: Prisma only — no raw SQL
+- Auth check: getSession() at top of every protected route
+
+## DO NOT
+- Use localStorage for auth (XSS risk)
+- Use tRPC — we use route handlers
+- Add dependencies without approval
+- Touch .env values directly
+```
+
+**Why it works:**
+- Specific enough to change agent behavior ("Prisma only — no raw SQL")
+- Short enough to read completely
+- Rejections are explicit ("NOT NextAuth")
+- Commands are concrete
+- No filler ("write clean code" is absent — good)
+
+This type of file produces consistent, on-pattern behavior session after session.
+
+## Rank 1: Specific + Code Examples + Explicit Anti-Patterns
+
+**Pattern:** The best rules files add code examples for the most important patterns and an exhaustive list of what NOT to do.
+
+A Rank 1 CLAUDE.md includes a **Stack** section, exact **Commands**, a few **Pattern** sections each with a short code example, and an annotated **DO NOT** list. Here's what the API response and auth patterns look like in code:
+
+**API Response Pattern** (always include in the rules file):
+
+```ts
+// Success
+return NextResponse.json({ data: result }, { status: 200 });
+
+// Error
+return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+```
+
+**Auth Pattern** (2 lines, prevents the most common API route mistake):
+
+```ts
+const session = await getSession();
+if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+```
+
+**Prisma import pattern** (prevents wrong import paths):
+
+```ts
+import { prisma } from "@/lib/prisma"; // Always use lib/prisma — never import PrismaClient directly
+```
+
+**DO NOT section** (annotated with reasons):
+
+```
+- LocalStorage for auth — EVER (XSS risk)
+- Raw SQL — use Prisma queries only
+- tRPC — we use route handlers
+- Class components — hooks only
+- The Pages Router — app/ only
+- `any` type — use `unknown` and narrow
+- Throw from API handlers — return error objects
+```
+
+**Testing section** (mocking patterns prevent hours of test debugging):
+
+```
+- Test behavior, not implementation
+- Mock Stripe: vi.mock("stripe")
+- Mock auth: vi.mock("@auth0/nextjs-auth0", () => ({ getSession: vi.fn() }))
+```
+
+**Why it's Rank 1:**
+- Short code examples (3–5 lines each) are more efficient than paragraph descriptions
+- Every code example shows both what to do AND by implication, what not to do
+- The DO NOT list is specific and annotated with reasons
+- The testing section covers mocking patterns — a common pain point that saves real time
+- Total length: ~400 words, ~550 tokens
+
+**The code example principle:** For the 3–5 most important patterns in your project, a short code snippet is worth 10x its word count in description. The agent sees exactly what you want, not an interpretation of a description.
+
+<FigureImage src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158" alt="Trophy and achievement icons representing the best-in-class AI agent rules file setup" width={1200} height={630} credit="Unsplash" />
+
+## The 10 Rules for Rules Files
+
+1. **Under 600 words.** Anything more is noise that dilutes the signal.
+2. **Every sentence changes behavior.** If deleting a line wouldn't change the agent's output, delete it.
+3. **Specificity over principles.** "No localStorage" not "be secure."
+4. **Include rejections.** "Auth0, NOT NextAuth" prevents the wrong suggestion before it happens.
+5. **Add code examples for the top 3 patterns.** 5 lines of code beats 50 words of description.
+6. **Version your stack.** "Next.js 15.3 App Router" not just "Next.js."
+7. **Include exact commands.** The agent needs to run `npm run db:migrate`, not guess.
+8. **Annotate the DO NOT list.** "No localStorage (XSS risk)" is better than "No localStorage."
+9. **Update after every major decision.** A stale rules file is worse than none — it gives confident wrong answers.
+10. **Commit it.** If it's not in version control, the team doesn't get the benefit.
+
+## The Freshness Problem: Rules Rot
+
+Even a well-written rules file degrades over time. The pattern you used 6 months ago may have been superseded. The library in the stack may have changed. The command may have moved.
+
+**Rules rot** is a real phenomenon — stale instructions that actively mislead the agent. An agent told to use a library you've removed will confidently generate failing code.
+
+Solutions:
+- **Quarterly review minimum:** Read every line. Does it still reflect reality?
+- **Update immediately on significant decisions:** Don't wait for the quarterly review for important changes.
+- **Use automatic capture:** Tools like [Context Keeper](/) update `CLAUDE.md` after each session based on what was actually decided, preventing rules from drifting from reality.
+
+The best rules files are maintained as living documents, not written once and forgotten.
+
+## Key Takeaways
+
+- Rank by specificity and conciseness: specific + short + code examples + explicit DO NOTs = Rank 1
+- Vague principles ("write clean code") are waste — they change nothing
+- Every sentence should change agent behavior; if not, delete it
+- Code examples are the highest-value content: 5 lines of code > 50 words of description
+- The DO NOT list is as important as the DO list — explicit rejections prevent wrong proposals
+- Include exact commands, version numbers, and file paths — specificity is everything
+- Update after every major decision; stale rules files are worse than no rules files
+
+Related: [How to Write a Great CLAUDE.md (Template + Examples)](/blog/how-to-write-a-great-claude-md) · [Cursor Memory & Rules: How to Set Up](/blog/cursor-rules-setup) · [AGENTS.md vs CLAUDE.md: The Agent Instruction File Standard](/blog/agents-md-vs-claude-md)

@@ -1,0 +1,340 @@
+---
+title: "Debugging Common Claude Code Errors: A Troubleshooting Guide"
+slug: "debugging-common-claude-code-errors"
+description: "Solutions to the most common Claude Code errors — authentication failures, context limits, tool permission issues, hook failures, and session quality problems."
+cluster: "Claude Code"
+keywords: ["claude code errors", "claude code troubleshooting", "claude code not working", "claude code debug"]
+primaryKeyword: "claude code errors"
+author: "Context Keeper Team"
+datePublished: "2026-07-03"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1555099962-4199c345e5dd"
+  alt: "Developer debugging code errors on multiple screens, representing Claude Code troubleshooting"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "developer debugging error screens"
+faq:
+  - q: "Why does Claude Code say 'authentication failed'?"
+    a: "This usually means your API key is expired, invalid, or not set. Run 'claude doctor' to diagnose. Re-authenticate with 'claude' and follow the login flow, or verify your ANTHROPIC_API_KEY environment variable."
+  - q: "Claude Code keeps asking me to approve the same tool — how do I fix this?"
+    a: "Add frequently-used tools to your allowed list in .claude/settings.json under 'permissions.allow'. You can also use a global settings file at ~/.claude/settings.json for tools you trust in all projects."
+  - q: "Why is Claude Code ignoring my CLAUDE.md?"
+    a: "Check that CLAUDE.md is in your project root (the directory you launched Claude Code from). Also verify the file uses UTF-8 encoding and standard Markdown. Very large CLAUDE.md files (>5000 tokens) may be partially truncated."
+  - q: "Claude Code is slow — how do I speed it up?"
+    a: "Switch to Claude Haiku for simpler tasks (/model haiku). Reduce context by starting fresh sessions when context grows large. Use /compact to summarize the conversation. Check your internet connection — Claude Code requires API calls."
+relatedSlugs:
+  - "claude-code-complete-guide"
+  - "install-and-configure-claude-code"
+  - "claude-code-hooks-explained"
+  - "claude-code-best-practices"
+draft: false
+---
+
+<Tldr>
+- Auth errors: run `claude doctor` → re-authenticate
+- Tool permission loops: add to allowed list in settings.json
+- CLAUDE.md ignored: check it's in project root, UTF-8, not too long
+- Slow sessions: use Haiku for simple tasks, fresh session when context is large
+</Tldr>
+
+## Starting With `/doctor`
+
+Before diving into specific errors, run Claude Code's built-in diagnostic tool:
+
+```bash
+claude doctor
+```
+
+`/doctor` checks your installation, authentication status, Node.js version, API connectivity, and configuration files. It surfaces the most common issues with specific fix instructions. Always start here when something feels broken.
+
+## Error Category 1: Authentication Failures
+
+### "Authentication failed" or "Invalid API key"
+
+**Symptoms:** Claude Code exits immediately or shows an authentication error on startup.
+
+**Causes and fixes:**
+
+1. **API key not set:**
+```bash
+echo $ANTHROPIC_API_KEY    # Should print your key
+```
+If empty, set it:
+```bash
+export ANTHROPIC_API_KEY=sk-ant-api03-...
+echo 'export ANTHROPIC_API_KEY=sk-ant-api03-...' >> ~/.zshrc
+```
+
+2. **API key expired or revoked:** Log into console.anthropic.com, check your API keys. Generate a new one if needed.
+
+3. **Wrong auth method:** If you authenticated via Claude.ai subscription but now have an API key, conflicts can occur. Re-run the auth flow:
+```bash
+claude        # Follow the authentication prompts
+```
+
+4. **Proxy or firewall blocking API calls:** Claude Code calls `api.anthropic.com`. Check that this domain isn't blocked in your network or proxy configuration.
+
+### "Rate limit exceeded"
+
+**Symptom:** Claude Code pauses with a rate limit message.
+
+**Fix:** Rate limits are per API key per tier. You can:
+- Wait for the rate limit to reset (usually 1–5 minutes for per-minute limits)
+- Upgrade your API tier at console.anthropic.com for higher limits
+- Use `/model haiku` to switch to a model tier with different rate limits
+
+## Error Category 2: Permission and Tool Issues
+
+### "Permission denied" for Tool Calls
+
+**Symptom:** Claude Code asks permission before every file read/write/bash command, even ones you've approved before.
+
+**Fix:** Add approved tools to your allowed list:
+
+```json
+// .claude/settings.json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git *)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)"
+    ]
+  }
+}
+```
+
+For tools you trust in every project, add them to your global settings:
+
+```json
+// ~/.claude/settings.json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run test)",
+      "Bash(npm run build)",
+      "Bash(git status)",
+      "Bash(git diff *)"
+    ]
+  }
+}
+```
+
+### Claude Code won't run a specific bash command
+
+**Symptom:** Claude Code says it doesn't have permission to run a specific command, or the command is in your deny list.
+
+**Fix:** Check your deny list:
+
+```json
+{
+  "permissions": {
+    "deny": ["Bash(rm -rf *)"]
+  }
+}
+```
+
+If the command is legitimately in the deny list, either update the deny list or run the command manually in a separate terminal.
+
+### Hooks failing and blocking actions
+
+**Symptom:** An action Claude Code is trying to take (like writing a file) is being blocked by a hook that exits non-zero.
+
+**Diagnosis:**
+1. Check `.claude/settings.json` for hooks under the relevant event type
+2. Run the hook command manually in your terminal to see what's failing
+3. Check for unmet dependencies (e.g., hook calls `prettier` but it's not installed)
+
+**Fix:** Either fix the hook command, install the missing dependency, or temporarily disable the hook:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npx prettier --write 2>/dev/null || true" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Adding `|| true` makes the hook always exit 0, preventing it from blocking the action while still running the command.
+
+<FigureImage src="https://images.unsplash.com/photo-1579403124614-197f69d8187b" alt="Error log with debugging terminal showing Claude Code error troubleshooting process" width={1200} height={630} credit="Unsplash" />
+
+## Error Category 3: Context and Quality Issues
+
+### Claude Code is ignoring my CLAUDE.md
+
+**Symptom:** Claude Code doesn't seem to follow the instructions in your `CLAUDE.md`.
+
+**Diagnosis:**
+1. Is `CLAUDE.md` in your project root? (The directory you launched `claude` from)
+2. Is it valid UTF-8 Markdown?
+3. Is it too long? Files over ~5,000 tokens may be partially truncated.
+
+**Fix:**
+```bash
+pwd                  # Confirm you're in the right directory
+ls CLAUDE.md         # Confirm the file exists at the root
+wc -w CLAUDE.md      # Check word count — aim for under 600 words
+```
+
+If your `CLAUDE.md` is over 600 words, it may be partially processed. Trim to the most critical decisions.
+
+Also confirm Claude Code is reading it — ask explicitly: "What does my CLAUDE.md say about the authentication approach?"
+
+### Claude Code suggests approaches I've already rejected
+
+**Symptom:** The agent recommends a library, pattern, or approach you explicitly ruled out.
+
+**Cause:** Either the rejection isn't in `CLAUDE.md`, or the session has accumulated enough context that early instructions are getting less attention (context rot).
+
+**Fix:**
+1. Add explicit rejections to `CLAUDE.md`:
+```md
+## DO NOT
+- Do NOT use tRPC — we use plain API routes
+- Do NOT use localStorage for auth state
+- Do NOT use class components — hooks only
+```
+
+2. If in a long session, use `/clear` to reset and let `CLAUDE.md` re-anchor the session.
+
+3. Reference the rejection explicitly: "As noted in CLAUDE.md, we do not use tRPC. Continue with plain API routes."
+
+### Claude Code is generating generic code instead of project-specific code
+
+**Symptom:** The agent's output looks like boilerplate that doesn't match your codebase's patterns.
+
+**Cause:** `CLAUDE.md` is missing or outdated. The agent doesn't have the project context it needs.
+
+**Fix:** Invest time in `CLAUDE.md`. Include your actual file conventions, import patterns, component structure, and naming conventions. See [How to Write a Great CLAUDE.md](/blog/how-to-write-a-great-claude-md) for a template.
+
+## Error Category 4: Performance and Cost Issues
+
+### Sessions are very slow
+
+**Symptom:** Each Claude Code response takes 30+ seconds.
+
+**Causes and fixes:**
+1. **Large context window:** A session with 100,000+ tokens will respond slowly. Use `/compact` to reduce context or start a fresh session.
+2. **Model choice:** Opus is slower than Sonnet. Use `/model sonnet` for most tasks.
+3. **Network latency:** Check your connection to api.anthropic.com.
+
+```bash
+ping api.anthropic.com    # Check basic connectivity
+```
+
+### Token costs are unexpectedly high
+
+**Symptom:** Your `/cost` output shows much higher costs than expected.
+
+**Common causes:**
+- Claude Code is reading large files it doesn't need (missing `.claudeignore`)
+- Long session without `/clear` between tasks
+- Using Opus for simple tasks
+- No `CLAUDE.md` causing the agent to explore the codebase to understand it
+
+**Fix:** See [How to Reduce Claude API Token Costs](/blog/reduce-claude-api-token-costs) for a comprehensive guide.
+
+## Error Category 5: MCP Server Issues
+
+### MCP server not connecting
+
+**Symptom:** Claude Code shows the MCP server as "disconnected" in `/mcp` output.
+
+**Diagnosis:**
+1. Run the MCP server command manually in a terminal to check for errors:
+```bash
+npx -y @modelcontextprotocol/server-postgres "postgresql://localhost/mydb"
+```
+2. Check that all required environment variables are set in the `env` section of your MCP config
+3. Verify the package name is correct and available on npm
+
+**Fix:** Common MCP server issues:
+- Wrong PostgreSQL connection string format (must be a full connection URL)
+- Missing environment variable (API key for GitHub server)
+- Package not available with `-y` flag (try installing globally first)
+
+### MCP tools not appearing in Claude Code
+
+**Symptom:** You've configured an MCP server but its tools don't appear when you ask Claude Code what tools it has.
+
+**Fix:**
+1. Restart the Claude Code session — MCP connections are established at startup
+2. Check `/mcp` for connection status and error messages
+3. Confirm your `.claude/mcp.json` or `mcpServers` config is valid JSON
+
+<FigureImage src="https://images.unsplash.com/photo-1531482615713-2afd69097998" alt="Developer troubleshooting server connection issues on multiple monitors — representing MCP server debugging for Claude Code" width={1200} height={630} credit="Unsplash" />
+
+## Error Category 6: Build and Integration Issues
+
+### Claude Code creates files that fail TypeScript
+
+**Symptom:** Files Claude Code writes produce TypeScript type errors.
+
+**Fix:**
+1. Add a typecheck hook to catch errors immediately:
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npx tsc --noEmit 2>&1 | tail -10 || true" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+2. Ensure your `CLAUDE.md` specifies TypeScript version and key type patterns.
+
+3. When Claude Code produces type errors, tell it explicitly: "You have TypeScript errors. Run `npx tsc --noEmit`, read the output, and fix all errors."
+
+### Claude Code breaks existing tests
+
+**Symptom:** Tests that were passing start failing after Claude Code edits.
+
+**Fix:**
+1. Ask Claude Code to run the tests before editing: "Before making any changes, run the full test suite and note which tests pass."
+2. After changes: "Run the tests again and compare. Fix any regressions."
+3. Add a test-run hook to catch regressions automatically.
+
+## Quick Diagnostic Reference
+
+| Symptom | First action |
+|---|---|
+| Any authentication error | `claude doctor` → re-authenticate |
+| Permission prompt loops | Add to `permissions.allow` in settings.json |
+| CLAUDE.md ignored | Check location, length, encoding |
+| Wrong patterns suggested | Add explicit rejections to `CLAUDE.md` |
+| Slow responses | `/model sonnet`, then `/compact` |
+| High token costs | Add `.claudeignore`, use `/clear` between tasks |
+| MCP not connecting | Run server command manually, check env vars |
+| TypeScript errors in output | Add typecheck hook, or ask Claude to fix |
+
+## Key Takeaways
+
+- Start all troubleshooting with `claude doctor`
+- Authentication issues: check API key in environment, re-run auth flow if needed
+- Permission issues: add trusted tools to `permissions.allow` in settings.json
+- Hook failures: run hook commands manually to diagnose, add `|| true` to prevent blocking
+- Quality issues (wrong patterns, generic code): invest in `CLAUDE.md` specificity
+- Performance issues: switch model with `/model`, use `/compact` or fresh session for large context
+- MCP issues: verify server command runs standalone, check env vars, restart session
+
+Most Claude Code errors are configuration issues, not code bugs. A systematic approach — `claude doctor`, check settings, check `CLAUDE.md` — resolves the vast majority.
+
+Related: [Install and Configure Claude Code](/blog/install-and-configure-claude-code) · [Claude Code Hooks Explained](/blog/claude-code-hooks-explained) · [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices)

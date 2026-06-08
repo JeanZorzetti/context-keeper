@@ -1,0 +1,174 @@
+---
+title: "How LLM Context Windows Actually Work (and Why They Fill Up)"
+slug: "how-llm-context-windows-work"
+description: "A practical explanation of LLM context windows for developers — what they are, how tokens are counted, why they fill up faster than you'd expect, and what happens when they do."
+cluster: "Context Rot & AI Agent Memory"
+keywords: ["llm context window", "context window tokens", "context window limit", "ai context window explained"]
+primaryKeyword: "llm context window"
+author: "Context Keeper Team"
+datePublished: "2026-06-14"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"
+  alt: "Server room with glowing data streams, representing LLM token processing and context window limits"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "server room data streams glow"
+faq:
+  - q: "What is an LLM context window?"
+    a: "A context window is the maximum amount of text (measured in tokens) that an LLM can process at once. It includes your instructions, conversation history, and any code or documents you've shared."
+  - q: "How many tokens is 200,000?"
+    a: "Roughly 150,000 words, or about 500 pages of text. But a long conversation plus large code files fills this faster than it sounds — a typical Claude Code session with file reads can hit 50,000–100,000 tokens in an hour."
+  - q: "What happens when a context window fills up?"
+    a: "Different tools handle this differently. Some truncate the oldest messages (losing early decisions). Others summarize. Claude Code will warn you and may require starting a new session. In all cases, early context becomes unavailable to the model."
+  - q: "How do I count tokens before they run out?"
+    a: "Claude's API provides token counting endpoints. Claude Code shows context usage in its interface. Generally: 1 token ≈ 4 characters of English text, 1 token ≈ 0.75 words."
+relatedSlugs:
+  - "context-window-limits-by-model-2026"
+  - "context-compression-techniques"
+  - "what-is-context-rot-in-ai-coding-agents"
+  - "ai-agent-memory-short-term-vs-long-term"
+draft: false
+---
+
+<Tldr>
+- Context window = the text an LLM can "see" at once, measured in tokens
+- 200k tokens sounds huge but fills fast with code + conversation
+- When it fills, early context (your decisions) silently disappears
+- The fix is proactive context management, not larger windows
+</Tldr>
+
+## What Is a Context Window?
+
+**An LLM context window is the maximum amount of text (measured in tokens) that the model can process in a single inference request.** Everything the model "sees" — your questions, the conversation history, the code you've shared, the files it has read — must fit within this window.
+
+When you send a message to Claude Code, the model doesn't just see your latest message. It sees the entire conversation from the beginning, plus everything Claude Code has read, plus the outputs of every tool call. All of this is fed into the model at once, and the model generates a response based on all of it simultaneously.
+
+The context window is simultaneously Claude's working memory and its long-term recall — within a session. Everything visible in the window is available for the model to reason about. Everything outside the window is inaccessible.
+
+## What Is a Token?
+
+Before understanding context windows, you need to understand tokens — the unit of measure.
+
+**A token is approximately 4 characters of English text**, or roughly 0.75 words. For code, tokens tend to be slightly more efficient because code repeats patterns (keywords, operators, identifiers).
+
+Common token estimates:
+- 1 word ≈ 1.3 tokens (English prose)
+- 100 words ≈ 130 tokens
+- 1,000 words ≈ 1,300 tokens
+- 1 page of text ≈ 375–500 tokens
+- 1 line of code ≈ 5–15 tokens
+- 100-line TypeScript file ≈ 500–1,500 tokens
+
+**Why tokens instead of words?** Tokenization is how LLMs actually process text — they split text into subword units. "Refactoring" might be one token; "antidisestablishmentarianism" might be four. Tokens are the natural unit for measuring model capacity.
+
+## Context Window Sizes in 2026
+
+| Model | Context window | Approximate pages |
+|---|---|---|
+| Claude Sonnet 4.6 | 200,000 tokens | ~650 pages |
+| Claude Opus 4.8 | 200,000 tokens | ~650 pages |
+| Claude Haiku 4.5 | 200,000 tokens | ~650 pages |
+| GPT-4o | 128,000 tokens | ~415 pages |
+| GPT-4o mini | 128,000 tokens | ~415 pages |
+| Gemini 1.5 Pro | 1,000,000 tokens | ~3,250 pages |
+| Gemini 2.0 Flash | 1,000,000 tokens | ~3,250 pages |
+
+These numbers sound enormous. In practice, they fill faster than expected.
+
+## Why Context Windows Fill Faster Than You Expect
+
+Consider a typical 2-hour Claude Code session working on a Next.js feature:
+
+| Item | Approximate tokens |
+|---|---|
+| CLAUDE.md (300 words) | ~400 tokens |
+| 10 source files read (average 100 lines each) | ~7,500 tokens |
+| Conversation history (50 exchanges) | ~15,000 tokens |
+| Tool outputs (bash commands, grep results) | ~5,000 tokens |
+| Agent reasoning steps | ~8,000 tokens |
+| **Total** | **~35,900 tokens** |
+
+That session used 18% of a 200k token window. It sounds fine — but notice what wasn't included:
+
+If Claude Code also:
+- Reads your `package.json` and `tsconfig.json` (~2,000 tokens)
+- Reads a lengthy `prisma/schema.prisma` (~3,000 tokens)
+- Reads test files (~5,000 tokens)
+- Runs a build and captures the output (~2,000 tokens)
+- Reads error logs (~2,000 tokens)
+
+The session is now at ~50,000 tokens — 25% of the window. At this rate, 4 hours of work would approach the window limit.
+
+**The pattern:** Every file read, every bash command output, every conversation exchange accumulates. Large files (logs, lock files, generated code) can consume tens of thousands of tokens in a single read.
+
+<FigureImage src="https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d" alt="Filling gauge or progress bar representing an LLM context window filling up during a coding session" width={1200} height={630} credit="Unsplash" />
+
+## What Happens When the Context Window Fills
+
+Different models and tools handle context window saturation differently:
+
+**Hard cutoff:** Some implementations simply refuse new input when the window is full. Claude Code will warn you and suggest starting a new session.
+
+**Rolling truncation:** The oldest content is removed to make room for new content. This is the most common approach — and the most dangerous for your architectural decisions, which were typically established early in the session.
+
+**Automatic summarization:** Some tools (Claude Code's `/compact` command) compress the conversation history into a summary before the window fills. You lose detail but retain the key points.
+
+**Attention dilution:** Before the window fills, models apply attention across all tokens. As context grows, early tokens receive proportionally less attention. This causes within-session context rot — the decisions from the first hour of a session become less influential than more recent content, even while still technically present.
+
+## The Practical Consequence: Decisions Fall Out
+
+The most damaging pattern: you spend the first 30 minutes of a session establishing your architectural context (auth approach, error handling, file conventions). The agent understands and works well.
+
+Three hours later, after reading many files and having many conversations, the earliest context — your architectural decisions — has been truncated or diluted. The agent starts making suggestions that contradict what you established at the start.
+
+This is within-session [context rot](/blog/what-is-context-rot-in-ai-coding-agents), caused directly by context window dynamics.
+
+## How Attention Mechanisms Work (Briefly)
+
+The reason early context fades isn't just truncation. Even when text is within the window, LLMs apply an "attention" mechanism that determines how much each token influences the output.
+
+Attention is computed relative to all tokens in the window. As the window grows with more recent content (the last hour of conversation), earlier tokens compete with more tokens for attention "budget." The model still has access to early decisions, but it's literally paying less attention to them proportionally.
+
+This is a known phenomenon called "lost in the middle" — LLMs tend to pay more attention to content at the very beginning and very end of the context window, with middle content receiving less attention. Architectural decisions from the middle of a long session are particularly vulnerable.
+
+## Managing Context Window Limits
+
+### For long sessions:
+
+**Use `/compact` proactively.** Before the session grows unwieldy, use `/compact` in Claude Code to compress the conversation history. You lose detail but retain the key decisions in summary form, and free up context window space for the rest of the session.
+
+**Use `/clear` between tasks.** When you finish one task and start another, `/clear` resets the conversation while keeping the session running. The next task starts with a fresh context, only `CLAUDE.md` as context.
+
+**Avoid reading unnecessary files.** Every file Claude Code reads consumes tokens. Reference specific files by path rather than letting the agent explore ("read `src/api/auth.ts`" vs "look at the authentication code").
+
+### For preventing decision loss:
+
+**Put decisions in `CLAUDE.md`, not just conversations.** Decisions made in conversation are at risk of truncation. Decisions in `CLAUDE.md` are loaded fresh at the start of every session — they survive truncation.
+
+**Reference `CLAUDE.md` explicitly when you need the agent to follow a decision.** If you suspect context degradation, say: "As specified in CLAUDE.md, we use Auth0. Continue with that constraint." This re-anchors the agent without requiring it to remember from early in the conversation.
+
+<FigureImage src="https://images.unsplash.com/photo-1544197150-b99a580bb7a8" alt="Data flow diagram showing tokens flowing into a bounded context window — representing LLM context window mechanics" width={1200} height={630} credit="Unsplash" />
+
+## Context Window vs Model Quality
+
+A common misconception: bigger context window = better model. Context window size and model capability are independent:
+
+- A 1M token context window on a weaker model may be less useful than a 200k window on a stronger model
+- Context window size determines how much text the model can process at once; model quality determines how well it reasons about that text
+- For most coding tasks, a 200k window is sufficient; Gemini's 1M window is valuable for specific large-codebase use cases
+
+See [Context Window Limits by Model (2026)](/blog/context-window-limits-by-model-2026) for a detailed model comparison.
+
+## Key Takeaways
+
+- A token is ~4 characters of English text; context windows measured in tokens
+- Claude Sonnet/Opus 4.x: 200k tokens; GPT-4o: 128k tokens; Gemini: up to 1M tokens
+- Context windows fill faster than they sound: files, conversation history, and tool outputs accumulate quickly
+- When the window fills: earliest content is truncated or receives less attention
+- Architectural decisions established early in long sessions are most vulnerable to context loss
+- Manage with: `/compact` to compress history, `/clear` between tasks, `CLAUDE.md` for persistent decisions
+- Context window size and model quality are independent — both matter for different reasons
+
+Related: [Context Window Limits by Model 2026](/blog/context-window-limits-by-model-2026) · [Context Compression Techniques for Long Agent Sessions](/blog/context-compression-techniques) · [What Is Context Rot in AI Coding Agents](/blog/what-is-context-rot-in-ai-coding-agents)

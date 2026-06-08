@@ -1,0 +1,271 @@
+---
+title: "Keeping AI Agents from Breaking Your Architecture"
+slug: "keeping-ai-agents-from-breaking-architecture"
+description: "AI agents will happily break your architectural patterns if you don't provide guardrails. Here's how to enforce your architecture even with autonomous agents."
+cluster: "Vibe Coding & Workflows"
+keywords: ["ai agent guardrails", "ai coding architecture enforcement", "ai code quality", "prevent ai breaking code"]
+primaryKeyword: "ai agent guardrails"
+author: "Context Keeper Team"
+datePublished: "2026-07-20"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64"
+  alt: "Safety guardrails on a mountain road representing architectural guardrails for AI coding agents"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "safety guardrail barrier protection"
+faq:
+  - q: "Why do AI agents break architectural patterns?"
+    a: "Agents optimize for solving the immediate problem in the most straightforward way. Without explicit context about your architectural patterns, they'll choose whatever is common in their training data — which may not match your project's approach."
+  - q: "How do I prevent an AI agent from using an approach I've rejected?"
+    a: "Explicitly list rejected approaches in your CLAUDE.md with the reason. 'Don't use X, we use Y because Z' is far more effective than hoping the agent infers your preferences."
+  - q: "Can CI/CD help catch AI architecture violations?"
+    a: "Yes. Architecture tests (using tools like ArchUnit, ts-arch, or custom linters) can catch violations before they merge. This is especially valuable when using AI agents for large refactors."
+relatedSlugs:
+  - "ai-coding-workflow-repeatable"
+  - "how-to-write-a-great-claude-md"
+  - "claude-code-hooks-explained"
+  - "documentation-ai-agents-read"
+draft: false
+---
+
+<Tldr>
+- CLAUDE.md: list rejected patterns with reasons ("don't use X, we use Y")
+- Hooks: block commits/pushes when violations detected
+- Architecture tests in CI: enforce patterns programmatically
+- Review: treat AI code the same as junior dev code — always review
+</Tldr>
+
+## Why AI Agents Break Patterns
+
+**AI coding agents are optimized to solve the immediate problem in the most straightforward way.** Without explicit information about your architectural decisions, they default to what's most common in their training data. If your codebase uses Auth0 but the agent wasn't told that, it might add NextAuth because NextAuth is common in Next.js projects. If you return error objects but the agent wasn't told that's the pattern, it might throw because throwing is more common in general JavaScript.
+
+This isn't a bug — it's rational behavior given incomplete information. The agent doesn't know your architecture unless you tell it. The question is: how do you tell it effectively enough that the pattern holds even in long sessions, even when the agent is working across multiple files, even when you're not watching closely?
+
+## Layer 1: CLAUDE.md — Preemptive Pattern Enforcement
+
+**The most effective way to prevent architectural violations is to prevent the agent from not knowing about them.** A well-written `CLAUDE.md` with explicit rejections changes agent behavior from the first message of every session.
+
+The critical pattern: **specify both what to do AND what not to do, with the reason.**
+
+```md
+## Architecture — Do and Do Not
+
+### Authentication
+- DO: use getSession() from @auth0/nextjs-auth0 in every protected route
+- DO NOT: add NextAuth, Passport, or custom JWT handling — we use Auth0 exclusively
+  Reason: managed sessions, SOC 2 audit trail, no XSS risk
+
+### Database
+- DO: import { prisma } from "@/lib/prisma" for all DB access
+- DO NOT: import PrismaClient directly anywhere in the codebase
+  Reason: single client instance prevents connection pool exhaustion
+
+### Error handling
+- DO: return NextResponse.json({ error: string }, { status: 4xx })
+- DO NOT: throw from API route handlers
+  Reason: throwing bypasses our error boundaries, produces inconsistent HTTP responses
+```
+
+The "DO NOT X — Reason" format is critical. Without the reason, the agent may follow the rule locally but get confused about related cases. With the reason, the agent can apply the same logic to situations the rule doesn't explicitly cover.
+
+## Layer 2: Claude Code Hooks — Automated Guardrails
+
+Hooks run shell commands in response to Claude Code events. Use them as automated architecture enforcement — running checks before the agent can commit or push problematic code.
+
+**Hook: block commits that violate patterns**
+
+In `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run typecheck && npm run lint"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This runs typecheck and lint before every commit the agent makes. If either fails, the commit is blocked. The agent sees the error output and must fix the issue before proceeding.
+
+**Hook: run tests before significant changes**
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit(**/api/**)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run test -- --testPathPattern=api"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+After the agent edits any file in the `api/` directory, this runs the API tests. Test failures are shown to the agent and must be resolved.
+
+**Hook: block specific dangerous patterns**
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git push --force*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Force push blocked — not permitted in this project' && exit 1"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+An exit code of 1 from a hook blocks the tool call. Use this for patterns that should never happen regardless of context.
+
+See [Claude Code Hooks Explained with Examples](/blog/claude-code-hooks-explained) for the full hook reference.
+
+<FigureImage src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64" alt="Safety guardrails on a mountain road representing the architectural guardrails and enforcement mechanisms for AI coding agents" width={1200} height={630} credit="Unsplash" />
+
+## Layer 3: Architecture Tests in CI
+
+For teams where architectural consistency is critical, automated architecture tests catch violations before they merge — regardless of whether they came from an AI agent or a human.
+
+**Custom linting rules:** ESLint can enforce patterns:
+
+```js
+// eslint-plugin-local/no-prisma-client.js
+module.exports = {
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value === "@prisma/client") {
+          context.report({
+            node,
+            message: "Import from @/lib/prisma, not @prisma/client directly"
+          });
+        }
+      }
+    };
+  }
+};
+```
+
+Add to your ESLint config and run in CI:
+
+```json
+{
+  "plugins": ["local"],
+  "rules": {
+    "local/no-prisma-client": "error"
+  }
+}
+```
+
+Now any direct PrismaClient import fails CI, whether it came from an AI agent or a developer.
+
+**Dependency boundary enforcement:** For TypeScript projects, `ts-arch` or `dependency-cruiser` enforce module boundaries:
+
+```json
+{
+  "forbidden": [
+    {
+      "name": "ui-no-db",
+      "comment": "UI components may not import database code directly",
+      "severity": "error",
+      "from": { "path": "src/components" },
+      "to": { "path": "src/db" }
+    }
+  ]
+}
+```
+
+## Layer 4: Code Review — The Human Safety Net
+
+No automated system catches everything. Code review remains essential for AI-generated code — and it's different from reviewing human-written code.
+
+**What to specifically check in AI-generated code:**
+
+| Category | What to look for |
+|---|---|
+| Patterns | Does it follow the patterns in CLAUDE.md? |
+| Auth | Is auth checked correctly on every protected route? |
+| Error handling | Are errors returned as objects, not thrown? |
+| Dependencies | Any new imports that shouldn't be there? |
+| Tests | Are edge cases covered? Are mocks hiding real behavior? |
+| Complexity | Is this simpler than it could be, or did the AI over-engineer? |
+| Secrets | Are there any hardcoded values that should be env vars? |
+
+**The single most important review question:** "Does this code follow our established patterns, or did the AI introduce its own?"
+
+AI agents produce code that is often locally correct but globally inconsistent. The pattern it uses in a new file may differ from the pattern established in the rest of the codebase — not because either is wrong, but because the agent didn't have the full picture.
+
+## Layer 5: Session Management — When to Intervene
+
+Even with all the above layers in place, within-session architectural drift can occur. Recognize when to intervene:
+
+**Intervene when:**
+- The agent proposes an approach that contradicts CLAUDE.md
+- A test fails and the agent's fix is to change the test rather than the implementation
+- The agent introduces a new pattern in one file that differs from adjacent files
+- The implementation is growing significantly more complex than expected
+
+**How to intervene effectively:**
+
+```
+Stop — that approach contradicts our pattern.
+
+Our pattern is: [specific correct pattern]
+The reason: [why]
+
+Please restart the implementation using our established pattern.
+```
+
+Be specific about both the correct pattern and the reason. The agent needs to understand the principle, not just the specific case.
+
+<FigureImage src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3" alt="Developer reviewing AI-generated code on screen representing the human safety net for catching architectural violations" width={1200} height={630} credit="Unsplash" />
+
+## The Five Layers Together
+
+The most robust architecture enforcement combines all five layers:
+
+| Layer | When it acts | What it catches |
+|---|---|---|
+| CLAUDE.md | Before first message | Explicit patterns and rejections |
+| Hooks | Before/after agent actions | Real-time violations during session |
+| Architecture tests | At CI | Pattern violations before merge |
+| Code review | Before merge | Anything automated tests miss |
+| Session intervention | During session | In-progress drift |
+
+Each layer catches what the previous layers miss. CLAUDE.md prevents most violations. Hooks catch what slips past. Architecture tests are the CI safety net. Code review catches the rest.
+
+## Key Takeaways
+
+- AI agents default to generic patterns when they lack context — this is rational, not a bug
+- Layer 1 (CLAUDE.md): specify DO and DO NOT with reasons — preemptive, most efficient
+- Layer 2 (Hooks): automated guards that run checks and block commits on failure
+- Layer 3 (Architecture tests): CI enforcement — catches violations before merge
+- Layer 4 (Code review): human safety net for what automation misses — always required
+- Layer 5 (Intervention): specific correction with the correct pattern and reason when drift occurs
+- No single layer is sufficient; combined they provide robust architecture protection
+
+Related: [A Repeatable Workflow for AI-Agent-Driven Development](/blog/ai-coding-workflow-repeatable) · [How to Write a Great CLAUDE.md (Template + Examples)](/blog/how-to-write-a-great-claude-md) · [Claude Code Hooks Explained with Examples](/blog/claude-code-hooks-explained)

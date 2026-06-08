@@ -1,0 +1,236 @@
+---
+title: "How to Share Context Across Cursor, Claude Code, and Cline"
+slug: "share-context-across-cursor-claude-code-cline"
+description: "If you use multiple AI coding tools, you need a shared context strategy. Here's how to maintain a single source of truth that works across Cursor, Claude Code, Cline, and Windsurf."
+cluster: "AI Coding Tools & Comparisons"
+keywords: ["multi-tool ai context", "shared ai context", "cursor claude code cline context", "agents.md multi-tool"]
+primaryKeyword: "multi-tool ai context"
+author: "Context Keeper Team"
+datePublished: "2026-07-13"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1522071820081-009f0129c71c"
+  alt: "Multiple tools connected on a shared network, representing unified AI coding context across Cursor, Claude Code, and Cline"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "tools connected network unified"
+faq:
+  - q: "Can I have one context file that works in all AI coding tools?"
+    a: "AGENTS.md comes closest — it's the most widely supported format. Most tools also support tool-specific files (.cursorrules, CLAUDE.md). A common pattern is AGENTS.md as the shared base plus tool-specific files for tool-specific instructions."
+  - q: "What happens if my context files are out of sync across tools?"
+    a: "Each tool gets different context and may make contradictory decisions. This is a significant hidden cost of multi-tool workflows. Maintaining a single AGENTS.md and auto-generating tool-specific files from it is the solution."
+  - q: "Does Context Keeper support multiple AI coding tools?"
+    a: "Yes. Context Keeper manages both CLAUDE.md and AGENTS.md, ensuring your architectural decisions are available regardless of which tool you're using."
+relatedSlugs:
+  - "agents-md-vs-claude-md"
+  - "best-ai-coding-agents-2026"
+  - "standardizing-ai-agent-setup-team"
+  - "cursor-rules-setup"
+draft: false
+---
+
+<Tldr>
+- AGENTS.md = single source of truth for multi-tool workflows
+- Tool-specific files (.cursorrules, CLAUDE.md) = tool-specific additions
+- Keep AGENTS.md as primary; derive others from it
+- Out-of-sync context files cause contradictory agent behavior
+</Tldr>
+
+## The Multi-Tool Context Problem
+
+Most serious AI developers use more than one tool. Claude Code for autonomous agent tasks. Cursor for IDE-integrated editing. Cline for model-agnostic VS Code work. Windsurf for its autonomous Cascade mode.
+
+The problem: each tool has its own context format. `CLAUDE.md` for Claude Code. `.cursorrules` for Cursor. `.clinerules` for Cline. Windsurf workspace rules. If these files aren't in sync, each tool operates with a different understanding of your project — and they'll give you contradictory results.
+
+**The agent that established the right pattern in a Claude Code session doesn't automatically communicate it to Cursor.** You get a Cursor session that proposes the approach Claude Code already rejected.
+
+This is the multi-tool context problem, and it's a hidden cost of using multiple AI coding tools.
+
+## The Solution: AGENTS.md as Universal Source of Truth
+
+**`AGENTS.md` is an emerging standard for tool-agnostic AI agent instructions.** Like `CLAUDE.md` for Claude Code, `AGENTS.md` is read by an increasing number of AI coding tools as a shared baseline context file.
+
+Key difference: `CLAUDE.md` is Claude Code-specific. `AGENTS.md` is meant to work across tools — it's the universal instruction file.
+
+As of 2026, tool support for `AGENTS.md`:
+- Claude Code: reads `AGENTS.md` alongside `CLAUDE.md`
+- Cursor: can be configured to read `AGENTS.md` via rules
+- Cline: reads `AGENTS.md` as a context source
+- Windsurf: reads `AGENTS.md` via workspace rules
+
+The strategy: **maintain `AGENTS.md` as the single canonical source of truth, then use tool-specific files for tool-specific instructions.**
+
+## A Unified Context Strategy in 4 Steps
+
+### Step 1: Create AGENTS.md as the Canonical Source
+
+`AGENTS.md` at your project root becomes the definitive record of architectural decisions. Write it the same way you'd write a comprehensive `CLAUDE.md`:
+
+```md
+# Project: [Name] — Agent Instructions
+
+## What This Project Is
+[One paragraph: what it does, who uses it, key constraints]
+
+## Tech Stack
+- Framework: Next.js 15.3, App Router only
+- Language: TypeScript 5.8, strict mode
+- Database: PostgreSQL via Prisma 7
+- Auth: Auth0 v3 (@auth0/nextjs-auth0)
+- Styling: Tailwind CSS 3.4
+- Testing: Vitest + @testing-library/react
+
+## Commands
+- Dev: npm run dev
+- Test: npm run test
+- Build: npm run build
+- Lint: npm run lint
+- DB: npm run db:migrate | npm run db:generate
+
+## Architecture Decisions
+- Auth: Auth0 only — NOT NextAuth, NOT Passport, NOT local sessions
+- Database: Prisma only — no raw SQL, no other ORM
+- API: Next.js route handlers in app/api/ — no tRPC
+- Error: return { data, error } from handlers — do not throw
+- State: Zustand for complex state — no Redux, no Context API for non-trivial state
+
+## DO NOT
+- Use localStorage or sessionStorage for auth state (XSS risk)
+- Use class components — hooks only
+- Add npm dependencies without approval
+- Touch .env files directly — reference by name only
+- Use the Pages Router — all routes in app/
+
+## Testing Standards
+- Tests co-located: foo.ts → foo.test.ts (same directory)
+- Mock external services with vi.mock()
+- Test user behavior, not implementation details
+```
+
+This is your ground truth. When a decision changes, you update `AGENTS.md`.
+
+### Step 2: Create CLAUDE.md as a Claude Code-Specific Layer
+
+`CLAUDE.md` can either mirror `AGENTS.md` or extend it with Claude Code-specific instructions:
+
+```md
+# See AGENTS.md for full project context.
+
+## Claude Code-Specific Instructions
+- Use /clear between unrelated tasks
+- Always run npm run test after file changes
+- Hook: context-keeper runs at session end to capture decisions
+- Ask before any git push to production branches
+
+## MCP Servers Available
+- postgres: query the development database
+- github: create PRs and read issues
+```
+
+This way, `CLAUDE.md` extends rather than duplicates. If `CLAUDE.md` is empty or minimal, Claude Code falls back to `AGENTS.md`.
+
+### Step 3: Create a .cursorrules Wrapper
+
+Cursor reads `.cursorrules`. Make it reference `AGENTS.md` and add Cursor-specific context:
+
+```md
+<!-- .cursorrules -->
+See AGENTS.md for the canonical project context. All decisions there apply here.
+
+## Cursor-Specific Notes
+- When using Composer, always show the diff for review before accepting
+- Use @AGENTS.md in chat to reference the project context
+- Tab completion: accept multi-line suggestions for standard patterns
+
+## File-Specific Rules
+- app/api/**/*.ts: always validate input, check auth, return {data, error}
+- components/**/*.tsx: React 19 hooks only, no class components
+```
+
+### Step 4: Create Cline Rules
+
+Cline reads `.clinerules` (or `clinerules.md`):
+
+```md
+# Cline Agent Instructions
+
+Refer to AGENTS.md for the full project context.
+
+## Cline-Specific Configuration
+- Update memory-bank/activeContext.md at end of each session
+- Update memory-bank/systemPatterns.md when new patterns are established
+- Use Claude Sonnet for implementation; Claude Opus for architectural planning
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1573164713988-8665fc963095" alt="Multiple tools connected to a central hub representing shared context across Claude Code, Cursor, and Cline" width={1200} height={630} credit="Unsplash" />
+
+## Keeping Context In Sync Automatically
+
+Manual synchronization of context files is a maintenance burden. Two automation approaches:
+
+### Option 1: Context Keeper Auto-Capture
+
+[Context Keeper](/) captures architectural decisions from Claude Code session transcripts and syncs them to both `CLAUDE.md` and `AGENTS.md`. When you make a decision in a Claude Code session, it automatically surfaces in both files — and by extension, in Cursor and Cline that read those files.
+
+Configure Context Keeper to update both files:
+```
+context-keeper capture --targets CLAUDE.md,AGENTS.md
+```
+
+### Option 2: Post-Session Update Skill
+
+Create a Claude Code skill that updates all context files at session end:
+
+```md
+# .claude/commands/sync-context.md
+
+Review this session's decisions and sync context files:
+
+1. Read AGENTS.md, CLAUDE.md, and .cursorrules
+2. Identify any new architectural decisions established in this session
+3. Add them to AGENTS.md under the appropriate section
+4. Sync the key decisions to CLAUDE.md and .cursorrules
+5. Show the diff before writing
+
+Keep AGENTS.md as the authoritative source. 
+The tool-specific files should extend, not duplicate it.
+```
+
+Run `/sync-context` at the end of each significant session.
+
+## Validating Sync Across Tools
+
+A quick sanity check to verify all tools are aligned:
+
+1. Open a Claude Code session: "What auth strategy does this project use?"
+2. Open Cursor Chat: "What auth strategy does this project use?"
+3. Open Cline: "What auth strategy does this project use?"
+
+All three should give the same answer from your context files. If they don't, your files are out of sync.
+
+<FigureImage src="https://images.unsplash.com/photo-1600267175161-cfaa711b4a81" alt="Synchronized clocks and coordination devices representing keeping AI coding tool context in sync" width={1200} height={630} credit="Unsplash" />
+
+## What to Put in AGENTS.md vs Tool-Specific Files
+
+| Content type | AGENTS.md | Tool-specific |
+|---|---|---|
+| Tech stack | Yes | No (inherits) |
+| Architecture decisions | Yes | No |
+| DO NOT rules | Yes | No |
+| Testing standards | Yes | No |
+| Commands | Yes | No |
+| Tool-specific settings | No | Yes |
+| MCP server config | No | Yes (Claude Code) |
+| Model selection rules | No | Yes (Cline) |
+| Memory Bank config | No | Yes (Cline) |
+
+## Key Takeaways
+
+- Multi-tool context fragmentation is real: each tool with different context produces contradictory results
+- AGENTS.md is the universal source of truth — read by Claude Code, Cursor (via rules), Cline, and Windsurf
+- Tool-specific files (CLAUDE.md, .cursorrules, .clinerules) extend AGENTS.md rather than duplicating it
+- Automated sync (via Context Keeper or a session-end skill) removes the maintenance burden
+- Validate alignment by asking all tools the same question and comparing answers
+
+Related: [AGENTS.md vs CLAUDE.md: The Agent Instruction File Standard](/blog/agents-md-vs-claude-md) · [Cursor Memory & Rules: How to Set Up](/blog/cursor-rules-setup) · [Best AI Coding Agents in 2026](/blog/best-ai-coding-agents-2026)

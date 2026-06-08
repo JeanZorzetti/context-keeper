@@ -1,0 +1,299 @@
+---
+title: "Claude Code MCP Servers: What They Are and How to Use Them"
+slug: "claude-code-mcp-servers"
+description: "MCP (Model Context Protocol) servers extend Claude Code with new tools and data sources. Learn what they are, how to configure them, and the best MCP servers to use."
+cluster: "Claude Code"
+keywords: ["claude code mcp", "mcp server claude code", "model context protocol claude", "claude code tools"]
+primaryKeyword: "claude code mcp"
+author: "Context Keeper Team"
+datePublished: "2026-06-28"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8"
+  alt: "Network of connected server nodes representing MCP server ecosystem for Claude Code"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "server network nodes connected"
+faq:
+  - q: "What is an MCP server for Claude Code?"
+    a: "An MCP server is a process that exposes tools, resources, or prompts to Claude Code via the Model Context Protocol. It lets Claude Code interact with databases, APIs, file systems, browsers, and any other system you can build a server for."
+  - q: "How do I add an MCP server to Claude Code?"
+    a: "Configure MCP servers in your .claude/settings.json under the 'mcpServers' key, specifying the server name, command, and arguments. Claude Code will start the server automatically and make its tools available."
+  - q: "What are the most useful MCP servers for Claude Code?"
+    a: "Popular options include: filesystem (extended file access), github (PR/issue management), postgres/sqlite (database queries), brave-search (web search), puppeteer (browser automation), and fetch (HTTP requests)."
+  - q: "Can I build my own MCP server?"
+    a: "Yes. MCP is an open protocol with SDKs for TypeScript, Python, and other languages. Building a custom MCP server is covered in our guide: How to Build an MCP Server."
+relatedSlugs:
+  - "model-context-protocol-complete-guide"
+  - "claude-code-complete-guide"
+  - "claude-code-hooks-explained"
+  - "connecting-mcp-servers-claude-cursor-cline"
+draft: false
+---
+
+<Tldr>
+- MCP servers add tools to Claude Code (database access, web search, GitHub, etc.)
+- Configure in `.claude/settings.json` under `mcpServers`
+- Built-in tools work for most tasks; MCP extends for specialized needs
+- Build your own with TypeScript/Python MCP SDK
+</Tldr>
+
+## Why Use MCP Servers With Claude Code?
+
+Claude Code's built-in tools cover most development needs: reading files, writing files, running shell commands, searching the web. But they stop at the boundary of external systems.
+
+Want Claude Code to query your production database? You need an MCP server. Want it to create a GitHub PR or comment on an issue? MCP server. Control a browser for E2E testing? Fetch data from a private API? MCP.
+
+**MCP servers extend Claude Code's capabilities to any external system you can write a server for — and thousands of pre-built servers already exist for the most common integrations.**
+
+## How MCP Works in Claude Code
+
+When Claude Code starts, it reads your MCP configuration and starts each configured server as a subprocess. The servers register their available tools. Claude Code can then call those tools during a session as naturally as it calls its built-in tools.
+
+From Claude Code's perspective, there's no difference between a built-in tool like `Read` and an MCP tool like `query_database`. Both are typed tool calls with defined inputs and outputs.
+
+The communication is local by default: MCP servers run on your machine and communicate over `stdio` (standard input/output). No network calls leave your machine unless the MCP server itself makes external API calls.
+
+## Configuration: Adding MCP Servers
+
+MCP configuration lives in `.claude/mcp.json` in your project directory, or in the `mcpServers` section of `.claude/settings.json`.
+
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "executable",
+      "args": ["argument1", "argument2"],
+      "env": {
+        "ENV_VAR": "value"
+      }
+    }
+  }
+}
+```
+
+- **`command`**: The executable to run (usually `npx`, `node`, or `python`)
+- **`args`**: Arguments passed to the command
+- **`env`**: Environment variables set for the server process
+
+## The Essential MCP Servers
+
+### 1. Filesystem Server — Extended File Access
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/you/projects/my-app"
+      ]
+    }
+  }
+}
+```
+
+The filesystem server exposes fine-grained file operations: list directories, read files, write files, move files, create directories — all scoped to the path you specify. It's more constrained and auditable than Claude Code's native file tools, which is useful in security-sensitive contexts.
+
+### 2. PostgreSQL Server — Direct Database Queries
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://username:password@localhost:5432/mydb"
+      ]
+    }
+  }
+}
+```
+
+With the PostgreSQL server, Claude Code can run SQL queries directly:
+
+"Query the database for users who signed up in the last 7 days but haven't completed onboarding."
+
+Claude Code generates and executes the SQL, returns the results, and you can use that data to guide further development. It's also invaluable for debugging — "Show me the rows in the subscriptions table where status is 'active' but stripe_subscription_id is null" is a query you'd otherwise need to write yourself.
+
+**Security note:** Use a read-only database user for the MCP server connection. The server exposes SQL execution — you don't want Claude Code to be able to drop tables.
+
+### 3. GitHub Server — Repository Operations
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token_here"
+      }
+    }
+  }
+}
+```
+
+The GitHub server gives Claude Code access to:
+- Create, read, update pull requests
+- Read and create issues
+- Search repositories and code
+- Get repository information, commits, files
+
+Practical use: "Create a PR for the current branch with a description that summarizes what was done in this session. Base it on main."
+
+Claude Code reviews the diff, writes a description, and creates the PR — without you opening a browser.
+
+### 4. Puppeteer Server — Browser Automation
+
+```json
+{
+  "mcpServers": {
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    }
+  }
+}
+```
+
+The Puppeteer server gives Claude Code control of a headless browser. Use cases:
+- E2E testing: "Navigate to localhost:3000/dashboard and verify the billing section loads correctly"
+- Screenshot capture for debugging: "Take a screenshot of the checkout flow and describe what you see"
+- Web scraping for research
+- Automated UI testing workflows
+
+<FigureImage src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64" alt="Abstract server connections and data flow diagram representing MCP server network extending Claude Code capabilities" width={1200} height={630} credit="Unsplash" />
+
+### 5. Fetch Server — HTTP Requests
+
+```json
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    }
+  }
+}
+```
+
+The fetch server allows Claude Code to make arbitrary HTTP requests — useful for:
+- Reading API documentation from URLs
+- Checking the response shape of an endpoint you're integrating with
+- Verifying that a deployed endpoint returns the expected data
+
+### 6. Memory Server — Persistent Key-Value Storage
+
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }
+  }
+}
+```
+
+The memory server gives Claude Code a persistent key-value store that survives across sessions. Unlike `CLAUDE.md` (which is structured text the agent reads), the memory server is programmatic — Claude Code can write and read values during sessions.
+
+Practical use: storing intermediate state during long multi-session tasks, or caching API responses for repeated lookups.
+
+## Complete Configuration Example
+
+A full MCP setup for a production web app:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://readonly:pass@localhost:5432/mydb"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    }
+  }
+}
+```
+
+## Verifying MCP Server Connections
+
+When you start a Claude Code session with MCP configured, you can verify the connections:
+
+```
+/mcp
+```
+
+This shows all configured MCP servers, their connection status, and the tools they expose. If a server fails to start, the error will appear here.
+
+You can also ask Claude Code directly:
+
+"What MCP tools do you have available right now?"
+
+Claude Code will list all tools from all connected servers.
+
+## Building a Custom MCP Server
+
+When no existing server covers your use case, build one. The TypeScript SDK makes it straightforward:
+
+```bash
+npm install @modelcontextprotocol/sdk zod
+```
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({ name: "my-server", version: "1.0.0" });
+
+server.tool(
+  "get_user_count",
+  "Get total registered user count",
+  {},
+  async () => {
+    const count = await db.user.count();
+    return {
+      content: [{ type: "text", text: `Total users: ${count}` }],
+    };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+For a complete guide, see [How to Build an MCP Server: Step-by-Step](/blog/how-to-build-mcp-server).
+
+<FigureImage src="https://images.unsplash.com/photo-1517694712202-14dd9538aa97" alt="Developer coding a custom server integration showing MCP server development process" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- MCP servers extend Claude Code to databases, GitHub, browsers, HTTP, and any system you can build a server for
+- Configure in `.claude/mcp.json` or `.claude/settings.json` under `mcpServers`
+- Essential servers: filesystem (scoped file access), postgres (database queries), github (PR/issues), puppeteer (browser), fetch (HTTP)
+- Use read-only database credentials for the postgres server — the server exposes SQL execution
+- Verify connections with `/mcp` command in a session
+- Build custom servers with the TypeScript SDK in ~30 lines of code
+- All major AI coding tools support MCP — servers you build work in Claude Code, Cursor, Windsurf, and Cline
+
+Related: [Model Context Protocol: The Complete Developer Guide](/blog/model-context-protocol-complete-guide) · [How to Build an MCP Server: Step-by-Step](/blog/how-to-build-mcp-server) · [Connecting MCP Servers to Claude Code, Cursor & Cline](/blog/connecting-mcp-servers-claude-cursor-cline)

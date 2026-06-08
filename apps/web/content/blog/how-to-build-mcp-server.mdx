@@ -1,0 +1,378 @@
+---
+title: "How to Build an MCP Server: A Step-by-Step Guide"
+slug: "how-to-build-mcp-server"
+description: "A practical, hands-on guide to building your first MCP server using the TypeScript SDK — from project setup to exposing tools, resources, and prompts to Claude Code."
+cluster: "MCP & Technical Deep-Dives"
+keywords: ["build mcp server", "mcp server tutorial", "create mcp server", "mcp typescript sdk"]
+primaryKeyword: "build mcp server"
+author: "Context Keeper Team"
+datePublished: "2026-08-02"
+readingTime: 12
+heroImage:
+  src: "https://images.unsplash.com/photo-1555099962-4199c345e5dd"
+  alt: "Developer building a server application with TypeScript code representing MCP server development"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "developer typescript server building"
+faq:
+  - q: "What do I need to build an MCP server?"
+    a: "Node.js 18+, the @modelcontextprotocol/sdk package, and a TypeScript or JavaScript project. The SDK handles all MCP protocol communication — you focus on implementing your tools."
+  - q: "How long does it take to build a basic MCP server?"
+    a: "A simple MCP server with 1–2 tools can be built in under an hour. The SDK abstracts all protocol complexity. The main investment is in the tool implementation logic, not the MCP plumbing."
+  - q: "How do I test my MCP server with Claude Code?"
+    a: "Add your server to .claude/settings.json under 'mcpServers' with the command to start it. Claude Code will launch your server automatically and make its tools available. Use claude mcp list to verify it's detected."
+  - q: "Can I build MCP servers in Python instead of TypeScript?"
+    a: "Yes. Anthropic provides official SDKs for both TypeScript and Python. The concepts are identical; syntax varies. Python SDK: pip install mcp."
+relatedSlugs:
+  - "model-context-protocol-complete-guide"
+  - "mcp-server-examples-use-cases"
+  - "claude-code-mcp-servers"
+  - "mcp-vs-traditional-apis"
+draft: false
+---
+
+<Tldr>
+- Install: `npm install @modelcontextprotocol/sdk`
+- Define tools with name, description, inputSchema, and handler function
+- Test locally: add to `.claude/settings.json` → restart Claude Code
+- Python alternative: `pip install mcp` (same concepts)
+</Tldr>
+
+## What You're Actually Building
+
+**An MCP (Model Context Protocol) server is a standalone process that exposes tools, resources, and prompts to AI clients like Claude Code via a standardized protocol.** When Claude Code connects to your server, it can call your tools exactly as it calls its built-in tools — read a file, query a database, trigger an API call, or run any custom logic you've implemented.
+
+This guide walks through building a working MCP server in TypeScript from scratch: project setup, defining tools with the SDK, testing locally with Claude Code, and the patterns that make production MCP servers reliable.
+
+## Prerequisites
+
+- Node.js 18 or later
+- npm or pnpm
+- Basic TypeScript familiarity
+- Claude Code installed (`npm install -g @anthropic-ai/claude-code`)
+
+The [official MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) handles all protocol communication — you implement the logic, not the wire protocol.
+
+## Step 1: Project Setup
+
+```bash
+mkdir my-mcp-server && cd my-mcp-server
+npm init -y
+npm install @modelcontextprotocol/sdk
+npm install -D typescript @types/node tsx
+```
+
+Create a `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "strict": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"]
+}
+```
+
+Add build scripts to `package.json`:
+
+```json
+{
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "type": "module"
+}
+```
+
+## Step 2: Create the Server Entry Point
+
+Create `src/index.ts`:
+
+```ts
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({
+  name: "my-mcp-server",
+  version: "1.0.0",
+});
+
+// Tools will be added here
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+This creates an MCP server that communicates via stdio — the standard transport for local MCP servers used with Claude Code. The server name and version are reported to clients.
+
+<FigureImage src="https://images.unsplash.com/photo-1555099962-4199c345e5dd" alt="Developer writing TypeScript server code representing the process of building an MCP server step by step" width={1200} height={630} credit="Unsplash" />
+
+## Step 3: Define Your First Tool
+
+Tools are functions the AI can call. Each tool has:
+- `name` — identifier the AI uses to call it
+- `description` — what the AI sees when deciding whether to use it
+- `inputSchema` — Zod schema defining the parameters
+- Handler function — your implementation
+
+```ts
+server.tool(
+  "get_project_stats",
+  "Get statistics about the current project: file count, total lines, languages detected",
+  {
+    directory: z.string().describe("The directory to analyze"),
+  },
+  async ({ directory }) => {
+    // Your implementation
+    const stats = await analyzeDirectory(directory);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(stats, null, 2),
+        },
+      ],
+    };
+  }
+);
+```
+
+The `description` is critical — it's what Claude reads when deciding whether to call your tool. Write it as a clear action statement: "Get X from Y" or "Search Z for W". Vague descriptions lead to the tool being misused or ignored.
+
+**Tool response format:** Tools return a `content` array. Each item is either:
+- `{ type: "text", text: string }` — plain text or JSON stringified
+- `{ type: "image", data: string, mimeType: string }` — base64-encoded image
+- `{ type: "resource", resource: {...} }` — a resource reference
+
+## Step 4: A Complete Working Example
+
+Here's a practical MCP server that provides file system utilities beyond what Claude Code's built-in tools support — useful for teaching the pattern:
+
+```ts
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import fs from "fs/promises";
+import path from "path";
+
+const server = new McpServer({
+  name: "project-utils",
+  version: "1.0.0",
+});
+
+// Tool 1: Count lines in a file
+server.tool(
+  "count_lines",
+  "Count the number of lines in a file",
+  { filePath: z.string().describe("Absolute or relative path to the file") },
+  async ({ filePath }) => {
+    const content = await fs.readFile(filePath, "utf-8");
+    const lines = content.split("\n").length;
+    return {
+      content: [{ type: "text", text: `${lines} lines in ${path.basename(filePath)}` }],
+    };
+  }
+);
+
+// Tool 2: Find files matching a pattern
+server.tool(
+  "find_files",
+  "Recursively find files matching a glob pattern in a directory",
+  {
+    directory: z.string().describe("Root directory to search"),
+    pattern: z.string().describe("Glob pattern, e.g. '*.ts' or 'test/**/*.spec.ts'"),
+  },
+  async ({ directory, pattern }) => {
+    const { glob } = await import("glob");
+    const files = await glob(pattern, { cwd: directory, absolute: true });
+    return {
+      content: [{ type: "text", text: files.join("\n") || "No files found" }],
+    };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+## Step 5: Exposing Resources
+
+Resources expose data that Claude can read, similar to files. Unlike tools (which take action), resources are read-only data sources:
+
+```ts
+server.resource(
+  "project-decisions",
+  "file:///project/decisions",
+  async (uri) => {
+    const content = await fs.readFile("./CLAUDE.md", "utf-8");
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/markdown",
+          text: content,
+        },
+      ],
+    };
+  }
+);
+```
+
+Resources are useful for exposing structured data (database schemas, configuration, documentation) that the AI should be able to read without you specifying a file path each time.
+
+## Step 6: Testing Locally with Claude Code
+
+Build your server and add it to Claude Code's configuration in `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "project-utils": {
+      "command": "node",
+      "args": ["/absolute/path/to/my-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+For development with `tsx` (no compilation step):
+
+```json
+{
+  "mcpServers": {
+    "project-utils": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/my-mcp-server/src/index.ts"]
+    }
+  }
+}
+```
+
+Restart Claude Code and verify the server is connected:
+
+```
+/mcp
+```
+
+You should see your server listed with its tools. Ask Claude to use one:
+
+```
+Use the count_lines tool to count lines in src/index.ts
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1516116216624-53e697fedbea" alt="Terminal showing successful MCP server connection and tool listing in Claude Code development environment" width={1200} height={630} credit="Unsplash" />
+
+## Step 7: Error Handling
+
+MCP tools should handle errors gracefully. Unhandled exceptions in a tool crash the server process and disconnect from Claude Code. Use try/catch:
+
+```ts
+server.tool(
+  "read_database",
+  "Query the project database and return results as JSON",
+  { query: z.string().describe("SQL SELECT query to execute") },
+  async ({ query }) => {
+    try {
+      const results = await db.query(query);
+      return {
+        content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Database error: ${error instanceof Error ? error.message : String(error)}` }],
+        isError: true,
+      };
+    }
+  }
+);
+```
+
+The `isError: true` flag tells the MCP client the tool encountered an error — Claude Code will show this differently from a successful response and adapt its next action accordingly.
+
+## Environment Variables and Configuration
+
+MCP servers can receive environment variables from their `mcpServers` configuration:
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "DATABASE_URL": "postgresql://localhost/myapp",
+        "API_KEY": "sk-..."
+      }
+    }
+  }
+}
+```
+
+In your server, access them via `process.env`:
+
+```ts
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) throw new Error("DATABASE_URL is required");
+```
+
+Never hardcode credentials in server code — always use environment variables and document required variables in your README.
+
+## Python Alternative
+
+If TypeScript isn't your preference, the Python SDK works identically:
+
+```bash
+pip install mcp
+```
+
+```python
+import mcp.server.stdio
+import mcp.types as types
+from mcp.server import Server
+
+app = Server("my-mcp-server")
+
+@app.list_tools()
+async def list_tools():
+    return [
+        types.Tool(
+            name="count_lines",
+            description="Count lines in a file",
+            inputSchema={"type": "object", "properties": {"path": {"type": "string"}}},
+        )
+    ]
+
+@app.call_tool()
+async def call_tool(name, arguments):
+    if name == "count_lines":
+        with open(arguments["path"]) as f:
+            lines = len(f.readlines())
+        return [types.TextContent(type="text", text=str(lines))]
+
+async def main():
+    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+        await app.run(read_stream, write_stream, app.create_initialization_options())
+```
+
+The concepts are identical — the SDK handles the protocol, you implement the logic.
+
+## Key Takeaways
+
+- MCP servers are Node.js (or Python) processes that expose tools, resources, and prompts via the MCP protocol
+- Install `@modelcontextprotocol/sdk` and use `McpServer` with `StdioServerTransport` for local use with Claude Code
+- Each tool needs: name, description (what the AI reads to decide), inputSchema (Zod), and an async handler
+- Add to Claude Code via `.claude/settings.json` under `mcpServers`; verify with `/mcp`
+- Handle errors with try/catch and `isError: true` — unhandled exceptions crash the server
+- Use environment variables for credentials; never hardcode in server code
+- Python SDK (`pip install mcp`) works with the same concepts if you prefer Python
+
+Related: [Model Context Protocol (MCP): The Complete Developer Guide](/blog/model-context-protocol-complete-guide) · [MCP Server Examples and Use Cases](/blog/mcp-server-examples-use-cases) · [Claude Code MCP Servers: What They Are & How to Use](/blog/claude-code-mcp-servers)

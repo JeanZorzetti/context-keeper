@@ -1,0 +1,257 @@
+---
+title: "What Is a CLAUDE.md File and Why It Matters for AI Coding"
+slug: "what-is-a-claude-md-file"
+description: "CLAUDE.md is the primary way to give Claude Code persistent context about your project. Learn what to put in it, how it works, and why it's essential for serious AI-assisted development."
+cluster: "Context Rot & AI Agent Memory"
+keywords: ["claude.md file", "claude.md explained", "claude code context file", "claude.md tutorial"]
+primaryKeyword: "claude.md file"
+author: "Context Keeper Team"
+datePublished: "2026-06-18"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d"
+  alt: "Markdown file open in a code editor, representing CLAUDE.md project context for AI coding agents"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "markdown file code editor"
+faq:
+  - q: "What is a CLAUDE.md file?"
+    a: "CLAUDE.md is a Markdown file that Claude Code reads at the start of every session to understand your project. It can contain architectural decisions, coding standards, patterns to follow or avoid, and any other context you want the agent to have from the start."
+  - q: "Where should I put my CLAUDE.md file?"
+    a: "At your project root. Claude Code automatically reads CLAUDE.md in the current directory and parent directories, so you can have project-specific and workspace-wide context files."
+  - q: "What should I NOT put in CLAUDE.md?"
+    a: "Secrets, API keys, or credentials. Also avoid stale information — an outdated CLAUDE.md can actively mislead the agent. Keep it focused on decisions that are still relevant."
+  - q: "Is CLAUDE.md the same as AGENTS.md?"
+    a: "Similar but tool-specific. CLAUDE.md is read by Claude Code. AGENTS.md is a more generic format that multiple tools (Cursor, Cline, Windsurf) can read. Context Keeper manages both."
+relatedSlugs:
+  - "agents-md-vs-claude-md"
+  - "how-to-write-a-great-claude-md"
+  - "why-claude-code-forgets-your-architecture"
+  - "manual-vs-automatic-context-capture"
+draft: false
+---
+
+<Tldr>
+- CLAUDE.md = a Markdown file that gives Claude Code your project context at session start
+- Lives at your project root; read automatically before every session
+- Contains: architecture decisions, coding patterns, constraints, and standards
+- Must be kept current — stale context is worse than no context
+</Tldr>
+
+## What Is a CLAUDE.md File?
+
+**A CLAUDE.md file is a Markdown file that Claude Code reads automatically at the start of every session, giving the AI agent persistent context about your project — its architecture, conventions, patterns, and constraints — without requiring you to re-explain anything from scratch.** It is the primary mechanism for solving the cross-session context problem in Claude Code.
+
+When you open a Claude Code session in a project directory, the agent automatically reads any `CLAUDE.md` files in the current directory and parent directories, loads their content into its context window, and begins the session already informed. Everything in `CLAUDE.md` is available to the agent before you type your first message.
+
+## The Problem CLAUDE.md Solves
+
+Claude Code is stateless by design. Each session starts blank — the agent has no memory of previous sessions, no knowledge of decisions made yesterday, no record of the patterns you've been using for the past three weeks. This is a fundamental property of how LLMs work at the infrastructure level.
+
+Without a `CLAUDE.md`, every session begins with a re-explanation phase:
+- "We're using Auth0, not NextAuth"
+- "API handlers return `{ data, error }` — don't throw"
+- "We rejected tRPC — route handlers only"
+
+This re-explanation takes 10–20 minutes per session and produces wrong suggestions until completed. At 5 sessions per day over a year, that's hundreds of hours of context re-establishment that produces no code.
+
+`CLAUDE.md` eliminates this. The agent reads your decisions before the first message. The session starts productive.
+
+See [Why Claude Code Forgets Your Architecture Between Sessions](/blog/why-claude-code-forgets-your-architecture) for the full explanation of why sessions are stateless.
+
+## How Claude Code Reads CLAUDE.md
+
+Claude Code's `CLAUDE.md` reading behavior, per Anthropic's documentation:
+- Claude Code reads `CLAUDE.md` in the **current working directory** at session start
+- It also reads `CLAUDE.md` files in **parent directories** up to the repo root
+- It reads `CLAUDE.md` in **subdirectories** as relevant when working in those directories
+- All `CLAUDE.md` content is loaded into the context window at the start of each session
+
+This means you can have:
+- A project-level `CLAUDE.md` at the repo root (most important — applies to all sessions in the project)
+- Module-level `CLAUDE.md` files for large codebases with distinct subsystems (e.g., `apps/api/CLAUDE.md` and `apps/web/CLAUDE.md`)
+
+The agent reads all relevant files and synthesizes them into a single context picture.
+
+<FigureImage src="https://images.unsplash.com/photo-1457369804613-52c61a468e7d" alt="Markdown file open in a code editor representing a CLAUDE.md project context file for AI coding agents" width={1200} height={630} credit="Unsplash" />
+
+## What to Put in CLAUDE.md
+
+A `CLAUDE.md` file is not documentation for humans. It is executable instructions for an AI agent. The content that produces the best results:
+
+### 1. Technology stack with versions
+
+```md
+## Stack
+- Next.js 15.3 App Router, TypeScript 5.8 strict, PostgreSQL via Prisma 7
+- Auth: Auth0 v3 (managed sessions, not JWT)
+- Styling: Tailwind 3.4
+- Testing: Vitest, co-located test files
+```
+
+Version numbers matter. "Next.js" and "Next.js 15.3 App Router" produce very different agent behavior, especially around routing conventions and component patterns.
+
+### 2. Architectural decisions with reasons
+
+```md
+## Architecture
+- Auth: Auth0 — NOT NextAuth. Chosen for managed session handling + SOC 2 compliance path.
+- DB: Prisma — NOT raw SQL or Drizzle. Type-safe queries required.
+- API: Route handlers in app/api/ — NOT tRPC. Team familiarity, simpler.
+- Errors: Return { data, error } — do NOT throw from API handlers.
+```
+
+The "NOT X — reason" format prevents the agent from proposing the rejected alternative, and the reason context helps the agent make correct calls in adjacent situations.
+
+### 3. Development commands
+
+```md
+## Commands
+- Dev: npm run dev (port 3000)
+- Test: npm run test
+- Build: npm run build
+- DB migrate: npm run db:migrate
+- DB generate: npm run db:generate
+```
+
+These prevent the agent from guessing or using wrong commands. The agent will use these exact commands when running your project.
+
+### 4. Critical code patterns
+
+Short code snippets for the most important patterns:
+
+```md
+## Patterns
+- API success: return NextResponse.json({ data: result }, { status: 200 })
+- API error: return NextResponse.json({ error: "message" }, { status: 4xx })
+- DB access: import { prisma } from "@/lib/prisma" — never import PrismaClient directly
+- Auth check: const session = await getSession(); if (!session) return 401
+```
+
+### 5. Explicit DO NOT list
+
+```md
+## Do Not
+- localStorage for auth (XSS risk)
+- Raw SQL — use Prisma queries
+- class components — hooks only
+- Pages Router — app/ only
+- `any` type — use `unknown` and narrow
+```
+
+The DO NOT list is often the highest-value section. Explicit rejections prevent the agent from proposing approaches you've already evaluated and decided against.
+
+## What NOT to Put in CLAUDE.md
+
+**Secrets and credentials:** Never put API keys, database URLs, or access tokens in `CLAUDE.md`. It's a plaintext file that gets committed to version control.
+
+**Vague guidelines:** "Write clean code" changes nothing. The agent already tries to write clean code. Only include content that specifically changes agent behavior.
+
+**Implementation details:** File-level code that the agent can read directly from source should not be duplicated in `CLAUDE.md`. Keep it for meta-level decisions, not implementation.
+
+**Stale information:** An outdated `CLAUDE.md` is actively harmful. If you write "we use Drizzle" but you've migrated to Prisma, the agent will confidently use Drizzle. Stale context produces worse results than no context.
+
+**Excessive length:** Target under 600 words. Beyond that, you're adding context that dilutes the important signal. The 80/20 rule applies: identify the 20% of decisions that cause 80% of wrong behavior, document those, leave the rest out.
+
+<FigureImage src="https://images.unsplash.com/photo-1483478550801-ceba5fe50e8e" alt="Developer writing documentation at a desk, representing the process of creating and maintaining a CLAUDE.md context file" width={1200} height={630} credit="Unsplash" />
+
+## A Complete CLAUDE.md Example
+
+Here's what a well-structured `CLAUDE.md` looks like for a real project:
+
+```md
+# Context Keeper — Claude Code Context
+
+## Project
+SaaS app for AI context management. Next.js 15.3 App Router + TypeScript 5.8 + PostgreSQL.
+Target users: developers using Claude Code, Cursor, and Cline.
+
+## Stack
+- Frontend: Next.js 15.3 App Router, React 19, Tailwind 3.4
+- Backend: Next.js route handlers (app/api/)
+- Database: Prisma 7 (PostgreSQL) — Supabase in prod
+- Auth: Auth0 v3 — session-based, NOT JWT
+- Payments: Stripe Checkout + webhooks
+- Testing: Vitest, co-located ([file].test.ts)
+
+## Commands
+- Dev: npm run dev (port 3000)
+- Test: npm run test
+- Build: npm run build (needs DATABASE_URL)
+- DB: npm run db:migrate | npm run db:generate
+
+## Architecture Decisions
+- Route handlers in app/api/ — NOT tRPC
+- Prisma for all DB access — NO raw SQL
+- Auth0 v3 — NOT NextAuth (managed sessions, SOC 2 path)
+- Error pattern: return { error: "message" } with HTTP status — NEVER throw
+
+## Do Not
+- localStorage for anything (XSS)
+- PrismaClient import — use @/lib/prisma
+- Pages Router — app/ only
+- `any` type — use `unknown` and narrow
+- Modify .env directly — use .env.local for local secrets
+```
+
+Total: ~200 words. Loads in ~260 tokens. Produces consistent, pattern-compliant behavior from the first message of every session.
+
+## How to Keep CLAUDE.md Current
+
+A `CLAUDE.md` that was accurate 3 months ago may be wrong today. Keeping it current is the ongoing maintenance challenge.
+
+**Manual approach:** After each significant decision, open `CLAUDE.md` and add or update the relevant section. Effective but requires discipline that breaks down during intense development phases.
+
+**Automatic approach:** Tools like [Context Keeper](/) monitor Claude Code session transcripts via hooks and automatically extract decisions, updating `CLAUDE.md` after every session. The hook is configured in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "context-keeper capture" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Quarterly review:** Whether you use manual or automatic updates, review the entire file quarterly. Delete outdated decisions. Update version numbers. Remove things that are now obvious from the codebase itself.
+
+## CLAUDE.md vs AGENTS.md
+
+`CLAUDE.md` is Claude Code's specific convention. `AGENTS.md` is a more generic format that multiple AI tools (Cursor, Cline, Windsurf) recognize. If you use multiple tools, you can:
+- Maintain an `AGENTS.md` as the universal source of truth
+- Have a `CLAUDE.md` that extends it with Claude Code-specific additions
+- Use `.cursorrules` and Cline's memory for tool-specific additions
+
+See [AGENTS.md vs CLAUDE.md](/blog/agents-md-vs-claude-md) for how to set up the multi-tool approach.
+
+## CLAUDE.md vs Tool-Specific Memory Features
+
+Cursor Memories, Windsurf Memories, and Cline's Memory Bank all serve similar purposes to `CLAUDE.md` — they persist context across sessions. The key differences:
+
+| Feature | CLAUDE.md | Tool-Specific Memory |
+|---|---|---|
+| Works with | Claude Code | That tool only |
+| Format | Markdown you control | Tool-managed |
+| Version control | Yes (committed to repo) | No (tool-managed storage) |
+| Team sharing | Yes (everyone reads the same file) | Personal by default |
+| Portability | High | Low |
+
+For team projects, `CLAUDE.md` is almost always better — it's committed to the repo, so every team member and every tool instance reads the same context.
+
+## Key Takeaways
+
+- CLAUDE.md is a Markdown file that Claude Code reads at the start of every session, pre-loading your project context
+- Located at the project root (or parent directories); Claude Code reads all relevant CLAUDE.md files
+- Best content: stack + versions, architectural decisions with reasons, dev commands, code patterns, and explicit DO NOT list
+- Target under 600 words — precision and brevity matter more than completeness
+- Never include secrets, vague guidelines, or stale information
+- Keep it current: manual updates require discipline; automatic capture tools (Context Keeper) maintain freshness without effort
+- AGENTS.md is the multi-tool equivalent; CLAUDE.md is Claude Code-specific
+
+Related: [AGENTS.md vs CLAUDE.md: The Agent Instruction File Standard](/blog/agents-md-vs-claude-md) · [How to Write a Great CLAUDE.md (Template + Examples)](/blog/how-to-write-a-great-claude-md) · [Why Claude Code Forgets Your Architecture Between Sessions](/blog/why-claude-code-forgets-your-architecture)

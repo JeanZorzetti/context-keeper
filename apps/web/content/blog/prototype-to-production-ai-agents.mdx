@@ -1,0 +1,281 @@
+---
+title: "From Prototype to Production with AI Coding Agents"
+slug: "prototype-to-production-ai-agents"
+description: "AI agents are great for prototyping, but taking AI-generated code to production requires specific practices. Here's the bridge from vibe-coded prototype to production-grade software."
+cluster: "Vibe Coding & Workflows"
+keywords: ["ai prototype to production", "ai generated code production", "ai coding production quality", "vibe coding production"]
+primaryKeyword: "ai prototype to production"
+author: "Context Keeper Team"
+datePublished: "2026-07-23"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d"
+  alt: "Rocket launching from prototype stage to production deployment, representing AI-assisted software development"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "launch rocket production deployment"
+faq:
+  - q: "Can AI-generated code go directly to production?"
+    a: "Sometimes, for well-defined, low-risk tasks like CRUD endpoints or UI components. But always with review, tests, and monitoring. Never deploy AI-generated code without at minimum running your test suite."
+  - q: "What are the biggest risks of putting AI-generated code in production?"
+    a: "Security vulnerabilities (especially in auth and data handling), edge cases the AI didn't consider, hidden dependencies the AI introduced, and performance issues on real data volumes."
+  - q: "How do I make AI-generated code production-ready?"
+    a: "Review it like any junior dev's code. Add tests covering the edge cases the AI described in its reasoning. Check security implications. Verify no new dependencies were added without review. Run performance tests on critical paths."
+relatedSlugs:
+  - "what-is-vibe-coding"
+  - "ai-coding-workflow-repeatable"
+  - "keeping-ai-agents-from-breaking-architecture"
+  - "spec-driven-development-ai"
+draft: false
+---
+
+<Tldr>
+- Prototype with AI freely; harden for production deliberately
+- Production checklist: security review, test coverage, dependency audit, perf test
+- The gap: AI doesn't know your SLAs, security requirements, or prod data volumes
+- Never skip code review for AI-generated production code
+</Tldr>
+
+## The Gap Between Prototype and Production
+
+**AI coding agents are genuinely excellent at prototyping.** Give Claude Code or Cursor a clear description of what you're building and in 30 minutes you can have a working version — routes, components, database schema, basic auth. The prototype runs. It handles the happy path. It looks right.
+
+But "looks right and runs locally" is not the same as "production-ready." The gap between a working prototype and production software isn't primarily about code quality — it's about properties the AI didn't optimize for: security, reliability under real conditions, edge cases on real data, and the operational overhead of maintaining it.
+
+This guide bridges that gap: how to take code that AI agents helped you build and harden it for production.
+
+## Why AI-Generated Prototypes Aren't Automatically Production-Ready
+
+AI agents optimize for solving the stated problem correctly. Production software has many additional requirements that weren't in the specification:
+
+**Security:** Auth logic, data handling, and input validation need specific patterns your codebase follows. Without knowing your exact security constraints, the AI defaults to common patterns — which may not match your requirements.
+
+**Edge cases on real data:** A prototype works on your test data. Production gets weird inputs, concurrent users, rate limiting, and network failures. The AI handled the edge cases you listed in your spec — not the ones you'll discover in production.
+
+**Performance at scale:** A database query that returns in 5ms on 100 rows may take 8 seconds on 100,000 rows. The AI didn't know your data volumes.
+
+**Error handling completeness:** AI-generated error handling tends to cover obvious cases. Production surfaces unusual failure modes that require operational experience to anticipate.
+
+**Hidden dependencies:** The AI may have added a new npm package to solve a problem more elegantly. That package has security implications, license implications, and bundle size implications that were outside the scope of the immediate task.
+
+**None of this means you shouldn't use AI agents for production code.** It means you ship AI-generated code to production the same way you ship junior developer code: with review, tests, and monitoring.
+
+## The Prototype-to-Production Checklist
+
+For every AI-generated feature moving to production, work through this checklist:
+
+**Security review**
+- [ ] Auth check present on every protected route/function
+- [ ] Input validation matches your established patterns (whitelist, not blacklist)
+- [ ] No hardcoded credentials, API keys, or secrets
+- [ ] User-controlled data never reaches raw SQL or shell commands
+- [ ] Error responses don't leak stack traces or internal details
+
+**Test coverage**
+- [ ] Happy path covered
+- [ ] Auth boundary tests (unauthenticated → 401, unauthorized → 403)
+- [ ] Input validation tests (each validation rule has at least one failing case)
+- [ ] Edge cases from the spec covered
+- [ ] Real database interactions (not mocked) for persistence tests
+
+**Dependency audit**
+- [ ] Any new packages added? Intentional?
+- [ ] Package versions pinned?
+- [ ] No unexpected peer dependencies?
+- [ ] License compatible with your project?
+
+**Performance**
+- [ ] No N+1 queries (check Prisma query logs)
+- [ ] Queries use indexed columns in WHERE/ORDER BY clauses
+- [ ] Any new API call has a timeout
+- [ ] Response sizes are bounded (no unbounded list returns)
+
+**Operational**
+- [ ] Errors logged with enough context to debug
+- [ ] Critical paths have monitoring/alerting
+- [ ] Feature flags or rollback strategy for risky changes
+
+<FigureImage src="https://images.unsplash.com/photo-1518770660439-4636190af475" alt="Server infrastructure and production deployment pipeline representing the production hardening process for AI-generated code" width={1200} height={630} credit="Unsplash" />
+
+## The Security Review in Practice
+
+Security review is the most important step and the one most often skipped for AI-generated code.
+
+**The two highest-risk areas in AI-generated code:**
+
+**Authentication boundaries.** AI agents frequently generate code that calls a function correctly but doesn't check auth before doing so. Example:
+
+```ts
+// AI generated this — looks fine
+export async function PUT(req: Request) {
+  const body = await req.json();
+  const updated = await prisma.user.update({
+    where: { id: body.userId },
+    data: body.data
+  });
+  return NextResponse.json({ data: updated });
+}
+```
+
+The problem: no auth check. Any unauthenticated request can update any user's data. The fix is two lines, but you have to catch it.
+
+**Input validation gaps.** AI agents tend to validate the shape of data (is it a string? is it a number?) but miss business-rule validation (is this email address one that belongs to this user? Is this resource owned by the requesting user?).
+
+```ts
+// Shape validation — AI usually gets this right
+if (!displayName || displayName.length < 3) {
+  return NextResponse.json({ error: "Invalid displayName" }, { status: 400 });
+}
+
+// Authorization validation — AI often misses this
+const user = await getSession();
+if (!user || profile.userId !== user.id) {
+  // Is this profile actually owned by the authenticated user?
+  return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+}
+```
+
+Review every function that accesses user-owned data and ask: is the code verifying that the authenticated user owns this resource?
+
+## Writing the Right Tests
+
+AI agents often write tests when asked, but the tests they write tend to:
+- Mock too much (so they don't catch real integration issues)
+- Skip authorization tests (a common omission)
+- Not cover the edge cases from the spec
+
+**The test checklist for AI-generated code:**
+
+```ts
+// 1. Happy path — AI usually gets this
+it("updates displayName when authenticated", async () => { ... });
+
+// 2. Unauthenticated — AI often misses this
+it("returns 401 when not authenticated", async () => { ... });
+
+// 3. Unauthorized — AI often misses this  
+it("returns 403 when user tries to update another user's profile", async () => { ... });
+
+// 4. Validation — AI sometimes writes these
+it("returns 400 when displayName is less than 3 chars", async () => { ... });
+
+// 5. Edge cases from spec — AI only covers what you listed
+it("returns 400 when displayName is all whitespace", async () => { ... });
+```
+
+For production code, tests 2 and 3 are not optional. They're the most valuable tests you can write.
+
+## Handling the Dependency Problem
+
+When an AI agent adds a new npm package to solve a problem, it often doesn't mention it. Before shipping to production:
+
+```bash
+git diff package.json
+```
+
+Review any new packages. For each one, ask:
+- Why did the agent add this? Is there a simpler solution with existing code?
+- What's the maintenance history? (check npm registry)
+- Are there known vulnerabilities? (`npm audit`)
+- What's the bundle size impact? (for frontend code)
+
+Sometimes the package is appropriate and well-chosen. Sometimes the agent added a 200KB package to do something that two lines of standard library code could handle. Check before shipping.
+
+## Performance: Where AI-Generated Code Often Falls Short
+
+AI agents generate queries that work correctly on test data. They may generate queries that perform poorly on production data.
+
+**The N+1 query problem:** AI-generated code in a loop often produces N database queries where one would do:
+
+```ts
+// AI may generate this — correct but slow
+const orders = await prisma.order.findMany({ where: { userId } });
+for (const order of orders) {
+  // N additional queries — one per order
+  const items = await prisma.orderItem.findMany({ where: { orderId: order.id } });
+}
+
+// What it should be — one query with include
+const orders = await prisma.order.findMany({
+  where: { userId },
+  include: { items: true }
+});
+```
+
+Review any AI-generated code that does database access inside a loop. Almost always it should be restructured to fetch in bulk.
+
+**Unbounded queries:** AI agents rarely add limits to list queries:
+
+```ts
+// AI generated — no limit
+const allUsers = await prisma.user.findMany({ where: { active: true } });
+
+// Production version — bounded
+const users = await prisma.user.findMany({
+  where: { active: true },
+  take: 100,
+  skip: offset
+});
+```
+
+A query that returns "all active users" may return 50 rows in dev and 50,000 rows in production.
+
+<FigureImage src="https://images.unsplash.com/photo-1467232004584-a241de8bcf5d" alt="Application performance metrics on dashboard representing the production performance monitoring essential after deploying AI-generated code" width={1200} height={630} credit="Unsplash" />
+
+## The Code Review That Can't Be Skipped
+
+For production code, treat AI-generated code like junior developer code: it needs a review. This isn't because the AI is wrong more often than developers — sometimes the opposite is true for routine code. It's because:
+
+1. The AI didn't know your full context (your security model, your SLAs, your operational constraints)
+2. The AI doesn't get paged when things break in production
+3. The AI can't tell you "wait, this is a bad idea for reason X that wasn't in the spec"
+
+**What to review:**
+
+| Area | Specific questions |
+|---|---|
+| Auth | Is auth checked before every protected operation? |
+| Input | Is user input validated before it touches the database or shell? |
+| Errors | Do errors return useful info without leaking internals? |
+| Queries | Are queries indexed, bounded, and free of N+1 patterns? |
+| Dependencies | Did the AI add any new packages? |
+| Patterns | Does this match the established codebase patterns? |
+| Tests | Are auth boundary and edge case tests present? |
+
+For small features (a new field, a minor UI change), this review takes 10 minutes. For a new endpoint or component, 30–45 minutes. This is not optional overhead — it's the production gate.
+
+## Incremental Shipping vs. Big Bang
+
+When prototyping with AI, it's tempting to build a large feature all at once and then ship everything together. This approach maximizes the risk if something goes wrong.
+
+**The incremental approach:**
+
+1. Get one minimal vertical slice working (one endpoint, one component, the minimal schema)
+2. Review, harden, and ship that slice
+3. Build the next increment on top of the hardened foundation
+
+This way, when you find a security issue (and you will find one), it's in a small, isolated piece of code — not woven through an entire feature.
+
+**When prototyping freely is fine:**
+- Local experiments not going to production
+- Throwaway demos
+- Exploring whether an approach is viable before spec-ing it properly
+
+**When you need the full hardening process:**
+- Any code that handles user data
+- Any code that will be customer-facing
+- Any code in a security or payment flow
+- Any code that other code will depend on
+
+## Key Takeaways
+
+- AI agents are excellent for prototyping — and production-ready code requires deliberate hardening steps after
+- The prototype-to-production gap: security, edge cases on real data, performance at scale, operational requirements
+- Always run the production checklist: security review, test coverage, dependency audit, performance review
+- Highest-risk areas in AI-generated code: auth boundaries and authorization checks (who owns this resource?)
+- Write the tests AI skips: unauthenticated requests, unauthorized requests, spec edge cases
+- Review AI-generated code like junior developer code — always, without exception
+- Ship incrementally: harden each slice before building the next, rather than shipping a large prototype all at once
+
+Related: [What Is Vibe Coding (and How to Do It Well)](/blog/what-is-vibe-coding) · [A Repeatable Workflow for AI-Agent-Driven Development](/blog/ai-coding-workflow-repeatable) · [Spec-Driven Development with AI Agents](/blog/spec-driven-development-ai) · [Keeping AI Agents from Breaking Your Architecture](/blog/keeping-ai-agents-from-breaking-architecture)

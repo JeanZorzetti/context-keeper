@@ -1,0 +1,313 @@
+---
+title: "Connecting MCP Servers to Claude Code, Cursor, and Cline"
+slug: "connecting-mcp-servers-claude-cursor-cline"
+description: "MCP servers work across multiple AI coding tools. Here's the exact configuration for connecting MCP servers to Claude Code, Cursor, and Cline — with working examples."
+cluster: "MCP & Technical Deep-Dives"
+keywords: ["mcp client setup", "mcp claude code config", "mcp cursor config", "mcp cline config"]
+primaryKeyword: "mcp client setup"
+author: "Context Keeper Team"
+datePublished: "2026-08-04"
+readingTime: 9
+heroImage:
+  src: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8"
+  alt: "Multiple AI tools connected to shared MCP servers via network configuration"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "network connections multiple tools"
+faq:
+  - q: "How do I connect an MCP server to Claude Code?"
+    a: "Add the server to your .claude/settings.json under the 'mcpServers' key: { \"mcpServers\": { \"myserver\": { \"command\": \"node\", \"args\": [\"path/to/server.js\"] } } }. Claude Code starts it automatically."
+  - q: "How do I connect an MCP server to Cursor?"
+    a: "In Cursor settings, go to MCP section and add your server configuration. Alternatively, edit ~/.cursor/settings.json. Cursor's MCP support follows a similar schema to Claude Code."
+  - q: "Can the same MCP server be used in multiple AI tools simultaneously?"
+    a: "Yes. Each tool starts its own instance of the MCP server process. The MCP server itself can handle multiple concurrent connections if designed to do so."
+  - q: "What if my MCP server isn't showing up in Claude Code?"
+    a: "Run 'claude mcp list' to see registered servers and their status. Common issues: wrong path in config, server crashes on startup (check logs with 'claude mcp get <name>'), or JSON syntax errors in settings.json."
+relatedSlugs:
+  - "model-context-protocol-complete-guide"
+  - "claude-code-mcp-servers"
+  - "mcp-server-examples-use-cases"
+  - "how-to-build-mcp-server"
+draft: false
+---
+
+<Tldr>
+- Claude Code: `mcpServers` in `.claude/settings.json`
+- Cursor: MCP section in settings UI or `~/.cursor/settings.json`
+- Cline: MCP Servers panel in VS Code sidebar
+- Debug: `claude mcp list` → check status and error logs
+</Tldr>
+
+## MCP Configuration Across Tools
+
+**The Model Context Protocol (MCP) is an open standard, which means the same MCP server can work with Claude Code, Cursor, and Cline — each connecting via its own configuration method.** Once you've found or built an MCP server, connecting it to your AI tools is a matter of providing the server's startup command and any required environment variables.
+
+This guide covers the exact configuration for each major AI coding tool, with working examples for the most common servers.
+
+## How MCP Client-Server Connection Works
+
+MCP servers are standalone processes. When an AI tool starts, it reads its MCP configuration and launches each configured server as a subprocess. Communication happens over stdio (standard input/output) using the MCP protocol.
+
+The general pattern for any tool:
+1. Configure the server: command to run, arguments, environment variables
+2. The tool starts the server process when it launches
+3. The server registers its tools/resources with the client
+4. The AI can now call those tools like any other capability
+
+All three major tools (Claude Code, Cursor, Cline) support this pattern — just with different configuration locations and syntax.
+
+## Connecting MCP Servers to Claude Code
+
+Claude Code reads MCP server configuration from `.claude/settings.json` in the project directory (project-scoped) or `~/.claude/settings.json` in your home directory (user-scoped, applies across all projects).
+
+**Basic connection:**
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": ["/absolute/path/to/server/dist/index.js"]
+    }
+  }
+}
+```
+
+**With environment variables:**
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_URL": "postgresql://localhost/myapp_dev"
+      }
+    }
+  }
+}
+```
+
+**Multiple servers in one config:**
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/projects"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token_here"
+      }
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your_brave_api_key"
+      }
+    }
+  }
+}
+```
+
+**Verifying the connection:**
+
+```bash
+claude mcp list
+```
+
+This shows all configured servers and their status (running, stopped, error). To get details on a specific server:
+
+```bash
+claude mcp get postgres
+```
+
+To check available tools from within a Claude Code session:
+
+```
+/mcp
+```
+
+This shows connected servers and the tools they expose.
+
+<FigureImage src="https://images.unsplash.com/photo-1544197150-b99a580bb7a8" alt="Multiple AI coding tools connected to shared MCP servers via configuration, representing the multi-tool MCP setup workflow" width={1200} height={630} credit="Unsplash" />
+
+## Connecting MCP Servers to Cursor
+
+Cursor added MCP support and reads its configuration from `~/.cursor/settings.json` (global) or from the project-level Cursor settings.
+
+**Via the Cursor UI:**
+1. Open Cursor Settings (Cmd/Ctrl + Shift + J)
+2. Navigate to the "MCP" section
+3. Click "Add Server"
+4. Fill in the server name, command, arguments, and environment variables
+5. Save — Cursor restarts the server connection
+
+**Via `~/.cursor/settings.json` directly:**
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_URL": "postgresql://localhost/myapp_dev"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token_here"
+      }
+    }
+  }
+}
+```
+
+The schema is nearly identical to Claude Code's configuration — the `mcpServers` key with the same `command`, `args`, `env` structure. If you have a working Claude Code config, the same server definitions work in Cursor with minimal changes.
+
+**Verifying in Cursor:** Open a Cursor Chat (Cmd/Ctrl + K or the chat panel). In Agent mode, the connected MCP tools appear in the tool selection — you should see your server's tools listed.
+
+## Connecting MCP Servers to Cline
+
+Cline (formerly Claude Dev) integrates MCP server configuration through the VS Code sidebar panel.
+
+**Via the Cline MCP Servers panel:**
+1. Open VS Code
+2. Find the Cline extension in the sidebar
+3. Click the "MCP Servers" section
+4. Click "Add Server"
+5. Enter the server name, command, and arguments
+6. Add any required environment variables
+7. Save — Cline will start the server
+
+**Via `cline_mcp_settings.json` directly:**
+
+Cline stores its MCP configuration in:
+- Windows: `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json`
+- Mac: `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`
+
+The format:
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_URL": "postgresql://localhost/myapp_dev"
+      },
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
+```
+
+The `disabled` and `alwaysAllow` fields are Cline-specific:
+- `disabled: true` stops the server without removing its config
+- `alwaysAllow: ["tool_name"]` auto-approves specific tools without prompting
+
+## Using the Same Server in Multiple Tools
+
+A single MCP server can be connected to Claude Code, Cursor, and Cline simultaneously. Each tool starts its own instance of the server process — they don't share the same process, but they use the same server code.
+
+**Practical benefit:** You configure and build an MCP server once, then add the same configuration (with the same `command`, `args`, `env`) to each tool's config file. All three tools then have access to the same capabilities.
+
+**For shared team MCP servers** (hosted instead of running locally):
+
+```json
+{
+  "mcpServers": {
+    "team-tools": {
+      "command": "node",
+      "args": ["/shared/team-mcp-server/dist/index.js"],
+      "env": {
+        "INTERNAL_API_KEY": "shared-key-here"
+      }
+    }
+  }
+}
+```
+
+Teams can run a shared MCP server on an internal host and have all developers connect to the same instance — this is the pattern for internal tooling servers (deploy pipelines, feature flags, error tracking).
+
+<FigureImage src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31" alt="Server infrastructure with multiple connections representing shared MCP server deployment for development teams" width={1200} height={630} credit="Unsplash" />
+
+## Common Configuration Mistakes and Fixes
+
+**Problem: Server not showing up after configuration**
+```bash
+# Check status:
+claude mcp list
+
+# Common causes:
+# 1. Wrong path — use absolute paths, not relative
+# 2. Server crashes on startup — check with: claude mcp get <server-name>
+# 3. JSON syntax error in settings.json — validate the JSON
+# 4. Package not installed — the npx -y flag installs it automatically
+```
+
+**Problem: Server starts but tools don't work**
+```
+# Symptom: Claude says it can't find tool 'X'
+# Fix: Confirm tool names with /mcp — tool names are case-sensitive
+# Fix: Confirm server initialized without errors
+```
+
+**Problem: Environment variables not passed**
+```json
+// Wrong — string concatenation doesn't work in JSON env
+{
+  "env": {
+    "POSTGRES_URL": "postgresql://localhost/" + process.env.DB_NAME
+  }
+}
+
+// Right — hardcode the full URL or reference from shell env
+{
+  "env": {
+    "POSTGRES_URL": "postgresql://localhost/myapp_dev"
+  }
+}
+```
+
+**Problem: npx is slow because it installs every time**
+```json
+// Faster — install the package globally first, then use node directly:
+// npm install -g @modelcontextprotocol/server-postgres
+{
+  "command": "mcp-server-postgres",
+  "args": []
+}
+```
+
+## Tool-Specific Notes
+
+**Claude Code:** The most mature MCP integration as of 2026, since MCP was designed by Anthropic. The `/mcp` slash command provides real-time server status and tool listings.
+
+**Cursor:** MCP support added in 2025. Works well in Composer Agent mode. Some servers that use streaming responses may have compatibility limitations — test with the specific server.
+
+**Cline:** The `alwaysAllow` setting is particularly useful for automation workflows where you don't want to approve every tool call manually. For trusted servers, set `alwaysAllow` for the tools you use most.
+
+## Key Takeaways
+
+- All three major tools (Claude Code, Cursor, Cline) use nearly identical MCP configuration: `command`, `args`, `env` under a `mcpServers` key
+- Claude Code: `.claude/settings.json` (project) or `~/.claude/settings.json` (user-level)
+- Cursor: `~/.cursor/settings.json` or via the Settings MCP panel
+- Cline: `cline_mcp_settings.json` in VS Code global storage, or via the Cline sidebar
+- The same server config works across all three tools — configure once, share the config
+- Verify Claude Code connections with `claude mcp list` or `/mcp` in-session
+- Use absolute paths in `args` to avoid path resolution issues
+
+Related: [Model Context Protocol (MCP): The Complete Developer Guide](/blog/model-context-protocol-complete-guide) · [Claude Code MCP Servers: What They Are & How to Use](/blog/claude-code-mcp-servers) · [MCP Server Examples and Use Cases](/blog/mcp-server-examples-use-cases)

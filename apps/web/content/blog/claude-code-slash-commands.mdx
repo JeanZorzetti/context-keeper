@@ -1,0 +1,283 @@
+---
+title: "Claude Code Slash Commands & Custom Skills: The Complete Reference"
+slug: "claude-code-slash-commands"
+description: "A complete reference for Claude Code's built-in slash commands plus how to create custom skills that extend Claude Code with your own workflows."
+cluster: "Claude Code"
+keywords: ["claude code slash commands", "claude code skills", "claude code custom commands", "claude code /help"]
+primaryKeyword: "claude code slash commands"
+author: "Context Keeper Team"
+datePublished: "2026-06-26"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1563986768494-4dee2763ff3f"
+  alt: "Command line interface showing slash commands for Claude Code AI coding assistant"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "command line terminal interface"
+faq:
+  - q: "What are Claude Code slash commands?"
+    a: "Slash commands are shortcuts that trigger specific Claude Code behaviors. Built-in examples include /help (documentation), /clear (reset context), /model (switch models), and /review (code review)."
+  - q: "How do I create custom slash commands in Claude Code?"
+    a: "Create Markdown files in your .claude/commands/ directory. Each file becomes a slash command. The filename is the command name and the file content is the prompt or instructions."
+  - q: "Can I share slash commands with my team?"
+    a: "Yes. Project-level commands in .claude/commands/ are committed to version control and shared with your team. User-level commands in ~/.claude/commands/ are personal."
+relatedSlugs:
+  - "claude-code-complete-guide"
+  - "claude-code-hooks-explained"
+  - "claude-code-best-practices"
+  - "claude-code-mcp-servers"
+draft: false
+---
+
+<Tldr>
+- Built-in: /help, /clear, /model, /review, /compact, /cost, /doctor
+- Custom: create .md files in .claude/commands/ → becomes /your-command
+- Project commands (shared) vs user commands (personal)
+- Skills = named reusable prompts that can invoke tools
+</Tldr>
+
+## What Are Slash Commands?
+
+**Slash commands are shortcuts that trigger specific Claude Code behaviors or invoke pre-written prompt templates.** You type `/command-name` in the Claude Code session and the command executes immediately — no need to write out a full instruction.
+
+Claude Code ships with a set of built-in slash commands. You can also create custom commands (called "skills") by writing Markdown files in your project's `.claude/commands/` directory or your personal `~/.claude/commands/` directory.
+
+## Built-In Slash Commands Reference
+
+### Session Management
+
+| Command | What it does |
+|---|---|
+| `/clear` | Reset conversation history while keeping the session running. Use this between tasks to prevent context accumulation. |
+| `/compact` | Compress the conversation history into a summary to save tokens. Loses some detail but reduces cost significantly in long sessions. |
+| `/exit` | End the Claude Code session. |
+
+### Model and Configuration
+
+| Command | What it does |
+|---|---|
+| `/model` | Switch between Claude models mid-session. `/model sonnet` switches to Claude Sonnet; `/model opus` switches to Claude Opus. |
+| `/allowed-tools` | Toggle which tools Claude Code can use without asking for permission. |
+| `/config` | View and edit Claude Code configuration settings. |
+
+### Information and Debugging
+
+| Command | What it does |
+|---|---|
+| `/help` | Show available commands and documentation. |
+| `/status` | Display session stats: tokens consumed, estimated cost, model in use. |
+| `/doctor` | Run a diagnostics check on your Claude Code installation and configuration. |
+| `/cost` | Show the token and cost breakdown for the current session. |
+
+### Code Review and Quality
+
+| Command | What it does |
+|---|---|
+| `/review` | Run a structured code review on the current state of the session's changes. |
+
+## Using Slash Commands Effectively
+
+### `/clear` — Your Most Important Command
+
+`/clear` is the single most impactful command for maintaining session quality. Use it whenever you:
+
+- Finish one task and move to a new, unrelated one
+- Notice the agent's responses becoming less precise
+- Want to start fresh without re-running your `CLAUDE.md` context load
+
+```
+/clear
+```
+
+After `/clear`, Claude Code re-reads `CLAUDE.md` on the next instruction and starts with clean context. The session's tool configuration, MCP connections, and settings are preserved.
+
+### `/compact` — Managing Long-Session Costs
+
+In a session that has run for 2+ hours, the conversation history can consume 50,000+ tokens. `/compact` asks Claude Code to summarize the history into a condensed form:
+
+```
+/compact
+```
+
+Claude Code generates a summary of what was accomplished, what decisions were made, and the current state. This replaces the detailed conversation history in the context window. You lose granular detail but retain the key decisions — and significantly reduce ongoing token costs.
+
+Use `/compact` proactively before a session's costs get too high, not as a last resort when the context is nearly full.
+
+### `/model` — Switching Intelligence Levels
+
+Different tasks benefit from different models. Claude Opus 4.8 is more capable for complex reasoning; Claude Sonnet 4.6 is faster and cheaper for implementation work.
+
+```
+/model sonnet     # Switch to Claude Sonnet 4.6 (faster, cheaper)
+/model opus       # Switch to Claude Opus 4.8 (more capable, more expensive)
+/model default    # Return to your configured default
+```
+
+A practical pattern: start a session with Opus for architectural planning, then `/model sonnet` for the implementation work.
+
+<FigureImage src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6" alt="Terminal window with slash command input showing Claude Code interactive commands interface" width={1200} height={630} credit="Unsplash" />
+
+## Custom Skills: Creating Your Own Slash Commands
+
+**Skills are custom slash commands you create by writing Markdown files.** The filename becomes the command name; the file content becomes the instruction Claude Code executes.
+
+### Creating a Project Skill
+
+Create the commands directory:
+
+```bash
+mkdir -p .claude/commands
+```
+
+Create a skill file:
+
+```bash
+# .claude/commands/review.md
+```
+
+File content:
+
+```md
+Run a structured code review on the current changes. Check for:
+
+1. TypeScript type safety — no `any` types, no type assertions without justification
+2. Error handling — are all async operations awaited? Are errors caught and handled?
+3. Security — is user input validated before use? Are auth checks in place?
+4. Test coverage — are new functions tested? Do tests cover edge cases?
+5. Pattern consistency — does the code follow the patterns in CLAUDE.md?
+
+Output your findings as a numbered list of issues, sorted by severity (critical → minor).
+For each issue: line number, description, and suggested fix.
+```
+
+Now in any Claude Code session in this project, you can run:
+
+```
+/review
+```
+
+Claude Code executes the review prompt automatically. The session context (current files, recent edits) is available to the command.
+
+### Creating a Personal Skill
+
+Personal skills live in `~/.claude/commands/` and are available across all your projects:
+
+```bash
+mkdir -p ~/.claude/commands
+
+# ~/.claude/commands/standup.md
+```
+
+Content:
+
+```md
+Summarize what was accomplished in this Claude Code session as a standup update:
+- What was done (bullet points, past tense)
+- What's next (what would be the logical next task)
+- Any blockers encountered
+
+Keep it under 100 words. Format for a team Slack message.
+```
+
+Run `/standup` at the end of any session to get a ready-to-paste team update.
+
+## Skill with Arguments
+
+Skills can accept arguments using the `$ARGUMENTS` placeholder:
+
+```bash
+# .claude/commands/test-feature.md
+```
+
+```md
+Run the tests specifically for the "$ARGUMENTS" feature area.
+
+1. Find all test files related to "$ARGUMENTS" in the test directories
+2. Run only those tests with verbose output
+3. If any fail, diagnose the root cause and suggest a fix
+```
+
+Usage:
+
+```
+/test-feature authentication
+/test-feature billing
+```
+
+The string after the command name is passed as `$ARGUMENTS` into the skill's prompt.
+
+## Skill Scoping: Project vs Personal
+
+| Location | Scope | Version controlled |
+|---|---|---|
+| `.claude/commands/` | Current project only | Yes (shared with team) |
+| `~/.claude/commands/` | All your projects | No (personal only) |
+
+Project skills are committed to version control and shared with your team. Everyone on the team gets the same `/review`, `/deploy-check`, and `/pre-merge` commands. Personal skills are yours alone — stored in your home directory and not committed anywhere.
+
+## Practical Skill Examples
+
+### Pre-Merge Safety Check
+
+```md
+# .claude/commands/pre-merge.md
+
+Before merging this branch, verify:
+
+1. Run the full test suite: `npm run test`
+2. Run TypeScript type checking: `npx tsc --noEmit`
+3. Check for console.log statements left in production code
+4. Verify no .env files were accidentally modified
+5. Confirm CLAUDE.md is up to date with any new patterns established in this session
+
+Report pass/fail for each check. If anything fails, describe what needs to be fixed.
+```
+
+### Context Update
+
+```md
+# .claude/commands/update-context.md
+
+Review the decisions and patterns established in this session and update CLAUDE.md:
+
+1. Read the current CLAUDE.md
+2. Identify any new architectural decisions, patterns, or conventions established in this session
+3. Add them to the appropriate sections in CLAUDE.md
+4. Remove any entries that are now outdated or contradicted by today's work
+
+Show me the diff before writing.
+```
+
+### Explain for New Developer
+
+```md
+# .claude/commands/explain.md
+
+Explain the $ARGUMENTS module/feature to a new developer joining the team:
+- What it does and why it exists
+- Key files and their roles
+- How data flows through it
+- Common patterns and conventions used
+- What to watch out for (gotchas, constraints)
+
+Assume the developer knows TypeScript and Next.js but not this codebase.
+```
+
+Usage: `/explain authentication`
+
+<FigureImage src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4" alt="Organized command reference cards and documentation representing Claude Code slash command reference guide" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- Built-in commands: `/clear` (reset context), `/compact` (save tokens), `/model` (switch models), `/status` (usage stats), `/help` (docs)
+- `/clear` is the most impactful command — use it between every unrelated task
+- Custom skills = Markdown files in `.claude/commands/` — filename is the command name
+- Project skills (`.claude/commands/`) are version-controlled and shared with the team
+- Personal skills (`~/.claude/commands/`) are yours across all projects
+- Skills accept arguments via `$ARGUMENTS` placeholder
+- Practical skill ideas: pre-merge check, context update, feature explanation, standup summary
+
+Slash commands and custom skills make Claude Code sessions significantly more consistent and repeatable. Instead of typing the same quality-check prompt in every session, encode it once as a skill and run it in one keystroke.
+
+Related: [Claude Code Hooks Explained](/blog/claude-code-hooks-explained) · [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices) · [Claude Code: The Complete Guide](/blog/claude-code-complete-guide)

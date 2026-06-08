@@ -1,0 +1,255 @@
+---
+title: "Cline Memory Bank: Setup, Limits, and Best Practices"
+slug: "cline-memory-bank-setup"
+description: "Cline's Memory Bank feature persists project context across AI agent sessions. Here's how to set it up, what its limitations are, and how to get the best results."
+cluster: "AI Coding Tools & Comparisons"
+keywords: ["cline memory bank", "cline memory", "cline context persistence", "cline setup"]
+primaryKeyword: "cline memory bank"
+author: "Context Keeper Team"
+datePublished: "2026-07-10"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31"
+  alt: "Database storage visualization representing Cline Memory Bank for AI agent context persistence"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "database storage vault"
+faq:
+  - q: "What is Cline Memory Bank?"
+    a: "Cline Memory Bank is a set of Markdown files in your project that Cline reads and writes to persist context across sessions. It includes files like projectbrief.md, activeContext.md, and techStack.md."
+  - q: "How do I enable Cline Memory Bank?"
+    a: "Memory Bank is enabled by default in Cline when you have the memory bank files in your project. You can also explicitly ask Cline to 'initialize memory bank' for a new project."
+  - q: "What are the limitations of Cline Memory Bank?"
+    a: "Memory Bank files must be manually maintained or you must explicitly ask Cline to update them. Cline doesn't automatically detect and save decisions — you need to prompt it. This is the gap that automatic capture tools fill."
+relatedSlugs:
+  - "cline-vs-claude-code"
+  - "best-ai-coding-agents-2026"
+  - "ai-agent-memory-short-term-vs-long-term"
+  - "agents-md-vs-claude-md"
+draft: false
+---
+
+<Tldr>
+- Memory Bank = a set of .md files in your project Cline reads/writes
+- Files: projectbrief.md, activeContext.md, techStack.md (and others)
+- Not fully automatic — requires prompting Cline to update
+- Pair with automatic capture tools for best results
+</Tldr>
+
+## What Is Cline Memory Bank?
+
+**Cline Memory Bank is a set of structured Markdown files in your project that Cline reads and writes to maintain context across AI agent sessions.** Unlike a single `CLAUDE.md` file, Memory Bank distributes project context across multiple specialized files — each covering a different aspect of your project.
+
+Memory Bank was designed to address the fundamental limitation of stateless AI agents: every session starts cold, with no memory of past decisions. By reading the Memory Bank files at the start of each session, Cline can maintain continuity across sessions and preserve the decisions and context established in previous work.
+
+## The Memory Bank File Structure
+
+Memory Bank consists of six core files, stored in a `memory-bank/` directory at your project root:
+
+```
+memory-bank/
+  projectbrief.md      # What the project is and its core requirements
+  productContext.md    # Why the project exists, problems it solves
+  systemPatterns.md    # Architecture, technical decisions, patterns
+  techContext.md       # Tech stack, setup, dependencies, configurations
+  activeContext.md     # Current work focus, recent changes, next steps
+  progress.md          # What's done, what's in progress, known issues
+```
+
+Each file serves a distinct purpose. Cline reads all of them at the start of a session to rebuild its understanding of where the project stands.
+
+## Setting Up Memory Bank for a New Project
+
+### Step 1: Initialize Memory Bank
+
+The easiest way to start is to ask Cline to initialize it:
+
+```
+Initialize Memory Bank for this project. The project is [brief description]. 
+Read the package.json, README (if any), and main entry point to understand the tech stack.
+Then create the memory-bank/ directory with the six Memory Bank files.
+```
+
+Cline will read your existing files and create the initial Memory Bank based on what it finds.
+
+### Step 2: Populate the Files Manually (Better Approach)
+
+For more control, create the files yourself with the right initial content:
+
+**`memory-bank/projectbrief.md`:**
+```md
+# Project Brief
+
+## What This Is
+[One paragraph description of the project]
+
+## Core Requirements
+- [Key requirement 1]
+- [Key requirement 2]
+- [Key requirement 3]
+
+## Success Criteria
+- [What "done" looks like for v1]
+```
+
+**`memory-bank/techContext.md`:**
+```md
+# Technical Context
+
+## Tech Stack
+- Framework: Next.js 15.3, App Router
+- Language: TypeScript 5.8, strict mode
+- Database: PostgreSQL via Prisma 7
+- Auth: Auth0 v3 via @auth0/nextjs-auth0
+- Testing: Vitest + @testing-library/react
+
+## Key Commands
+- Dev: npm run dev
+- Test: npm run test
+- Build: npm run build
+- DB: npm run db:migrate
+
+## Configuration
+- TypeScript: tsconfig.json (strict mode, @/ alias)
+- DB: Prisma schema at prisma/schema.prisma
+```
+
+**`memory-bank/systemPatterns.md`:**
+```md
+# System Patterns
+
+## Architecture Decisions
+- Auth: Auth0 (not NextAuth, not Passport) — managed sessions
+- Database: Prisma (not Drizzle, not raw SQL) — type-safe client
+- API: Next.js route handlers in app/api/ (not tRPC)
+- Error handling: return { data, error } — do not throw
+
+## File Conventions
+- Components: components/[domain]/ComponentName.tsx
+- API routes: app/api/[resource]/route.ts
+- Tests: co-located as [file].test.ts
+
+## DO NOT
+- Use localStorage for auth
+- Use class components
+- Write raw SQL (use Prisma)
+- Add dependencies without review
+```
+
+**`memory-bank/activeContext.md`:**
+```md
+# Active Context
+
+## Current Focus
+[What you're working on right now]
+
+## Recent Changes
+[What changed in the last session]
+
+## Next Steps
+[What needs to happen next]
+
+## Blockers
+[Any blocking issues]
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1517842645767-c639042777db" alt="Organized file folders and documents representing Cline Memory Bank structured project context files" width={1200} height={630} credit="Unsplash" />
+
+## Updating Memory Bank During Sessions
+
+Memory Bank is only valuable if it stays current. Cline doesn't automatically update it — you must explicitly prompt updates.
+
+### End-of-Session Update
+
+At the end of every significant session, run this prompt:
+
+```
+Update the Memory Bank to reflect today's session. Specifically:
+1. Update activeContext.md with what was done and what's next
+2. Update progress.md with completed items
+3. If new architectural decisions were made, add them to systemPatterns.md
+4. If new dependencies were added, update techContext.md
+```
+
+This takes Cline about 2 minutes and ensures the next session starts with accurate context.
+
+### Automated Update Prompt
+
+You can make this part of your workflow by creating a Cline skill:
+
+```bash
+# .cline/commands/update-memory.md
+Update the Memory Bank to reflect this session:
+- activeContext.md: current focus, what was done, next steps
+- progress.md: mark completed items done
+- systemPatterns.md: add any new architectural decisions
+- techContext.md: add any new dependencies or config changes
+
+Show me the changes before writing.
+```
+
+### What to Update After Each Session
+
+| Changed | Update this file |
+|---|---|
+| Made architectural decision | systemPatterns.md |
+| Added a dependency | techContext.md |
+| Completed a feature | progress.md |
+| Started new work | activeContext.md |
+| Changed how something works | systemPatterns.md |
+
+## Using Memory Bank Effectively in Sessions
+
+At the start of a session, Cline should read the Memory Bank automatically. If it doesn't, prompt it:
+
+```
+Read the memory-bank/ directory files and give me a brief summary of 
+where we are in the project.
+```
+
+This forces a Memory Bank read and gives you confirmation that Cline has the right context.
+
+For complex sessions, reference specific Memory Bank files explicitly:
+
+```
+Read systemPatterns.md and then add the new webhook handler following 
+our established error handling pattern.
+```
+
+## Memory Bank Limitations
+
+**Not automatic.** The biggest limitation of Memory Bank is the discipline required to maintain it. Developers in the middle of a deep session rarely stop to update files. The context drifts as the project evolves.
+
+**File size grows over time.** As sessions accumulate, `activeContext.md` and `progress.md` can grow large. Periodically prune old entries — information about features completed 3 months ago isn't useful context for today's session.
+
+**Not version-controlled by default.** Unless you commit `memory-bank/` to git, the files only exist locally. Consider committing them if the team is using Cline collectively.
+
+**Not portable.** Memory Bank is a Cline-specific convention. If you switch to Claude Code, the Memory Bank files aren't automatically read — they're just Markdown files the agent doesn't know to look for.
+
+## Memory Bank vs CLAUDE.md
+
+| | Cline Memory Bank | CLAUDE.md |
+|---|---|---|
+| **Structure** | 6 specialized files | 1 file |
+| **Granularity** | More detailed | More concise |
+| **Tool specificity** | Cline-specific | Universal (all AI tools) |
+| **Version control** | Optional | Usually committed |
+| **Auto-update** | Manual | Manual (or auto-captured) |
+| **Team sharing** | Possible (commit to repo) | Standard |
+
+For teams using only Cline, Memory Bank's structure is an advantage. For multi-tool teams, `CLAUDE.md` is simpler and more portable.
+
+<FigureImage src="https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d" alt="Organized binder with tabbed sections representing the structured Memory Bank file organization for Cline" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- Cline Memory Bank = six structured Markdown files covering different aspects of project context
+- Core files: projectbrief.md, productContext.md, systemPatterns.md, techContext.md, activeContext.md, progress.md
+- Initialize on new projects by asking Cline to create the files, or write them manually
+- Update at the end of every session — Memory Bank is only valuable if it stays current
+- Create a Cline skill for end-of-session updates to make it automatic
+- Main limitation: manual maintenance — Cline doesn't auto-update Memory Bank
+- For multi-tool teams, pair Memory Bank with `CLAUDE.md` for cross-tool portability
+
+Related: [Cline vs Claude Code](/blog/cline-vs-claude-code) · [How to Persist Architectural Decisions Across AI Sessions](/blog/how-to-persist-architectural-decisions) · [AGENTS.md vs CLAUDE.md: The Agent Instruction File Standard](/blog/agents-md-vs-claude-md)

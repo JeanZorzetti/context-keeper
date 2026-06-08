@@ -1,0 +1,249 @@
+---
+title: "How to Write a Great CLAUDE.md (Template + Examples)"
+slug: "how-to-write-a-great-claude-md"
+description: "A practical guide to writing a CLAUDE.md file that actually improves your AI coding sessions — with a ready-to-use template and real-world examples."
+cluster: "Claude Code"
+keywords: ["claude.md template", "write claude.md", "claude.md examples", "claude.md best practices"]
+primaryKeyword: "claude.md template"
+author: "Context Keeper Team"
+datePublished: "2026-06-27"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173"
+  alt: "Person writing structured documentation at a desk, representing how to write an effective CLAUDE.md file"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "person writing documentation desk"
+faq:
+  - q: "What sections should a CLAUDE.md file have?"
+    a: "A good CLAUDE.md includes: Project Overview (what it is, tech stack), Architecture Decisions (key choices and why), Coding Standards (naming, patterns), What to Avoid (anti-patterns, rejected approaches), and Testing Requirements."
+  - q: "How long should a CLAUDE.md file be?"
+    a: "Aim for 200–800 tokens (roughly 150–600 words). Long enough to give meaningful context; short enough that it doesn't consume significant context window space."
+  - q: "How often should I update CLAUDE.md?"
+    a: "After any significant architectural decision. If you're using an automatic tool like Context Keeper, this happens continuously. Manual updates should happen at minimum after every major feature or refactor."
+  - q: "Should CLAUDE.md be committed to version control?"
+    a: "Yes. CLAUDE.md is project documentation. Committing it means your whole team gets the same context, and you have a history of architectural decisions over time."
+relatedSlugs:
+  - "what-is-a-claude-md-file"
+  - "agents-md-vs-claude-md"
+  - "claude-code-best-practices"
+  - "how-to-persist-architectural-decisions"
+draft: false
+---
+
+<Tldr>
+- Keep it short: 200–800 tokens is the sweet spot
+- Structure: Overview → Architecture → Standards → Avoid → Testing
+- Commit to version control — it's living documentation
+- Update after every significant decision, not monthly
+</Tldr>
+
+## Why CLAUDE.md Makes or Breaks Your AI Sessions
+
+Every Claude Code session starts cold. The agent has no memory of what you discussed yesterday, no knowledge of the decisions you made last week, no awareness of the patterns you've established over months of development.
+
+`CLAUDE.md` is how you solve this. It's a Markdown file at your project root that Claude Code reads automatically at the start of every session. A good `CLAUDE.md` transforms a cold-start session into a warm-start session — the agent immediately knows your stack, your patterns, and your constraints.
+
+**A good `CLAUDE.md` is not documentation for humans. It is a briefing document for your AI agent.** That distinction shapes everything about how you write it.
+
+## What Makes a CLAUDE.md "Great"
+
+Before the template, the principles:
+
+**Specificity beats comprehensiveness.** "We use Next.js" is useless — Claude Code knows what Next.js is. "We use Next.js 15.3 App Router (not Pages Router) — all routing is via `app/` directory, no `pages/`" is actionable.
+
+**Decisions beat descriptions.** "Our database layer uses PostgreSQL via Prisma with the repository pattern" is better than "We have a database." The agent needs to know what to use, not that something exists.
+
+**Rejections are as important as choices.** "Do NOT use tRPC — we use plain Next.js API routes in `app/api/`" prevents the agent from proposing tRPC. Without this, the agent may propose any reasonable alternative.
+
+**Short enough to actually read.** A 5,000-word `CLAUDE.md` gets skimmed. Aim for 200–600 words — dense enough to be useful, short enough to fit in the agent's attention.
+
+## The CLAUDE.md Template
+
+Copy this template and fill it in for your project:
+
+```md
+# [Project Name]
+
+## What This Project Is
+[One paragraph. What does it do? Who uses it? What's the stack?]
+
+## Tech Stack
+- Language: TypeScript X.X, strict mode
+- Framework: [e.g., Next.js 15.3 App Router]
+- Database: [e.g., PostgreSQL via Prisma 7]
+- Auth: [e.g., Auth0 v3 via @auth0/nextjs-auth0]
+- Styling: [e.g., Tailwind CSS 3.4]
+- Testing: [e.g., Vitest + @testing-library/react]
+- Deploy: [e.g., Vercel, fly.io, self-hosted]
+
+## Key Commands
+- Dev server: npm run dev
+- Tests: npm run test
+- Build: npm run build
+- Type check: npx tsc --noEmit
+- DB migrate: npm run db:migrate
+- DB generate: npm run db:generate
+
+## Architecture Decisions
+- [Decision]: [Why. Include the alternatives rejected.]
+- [Decision]: [Why.]
+
+## Coding Standards
+- [Pattern]: [How to do it in this project]
+- [Convention]: [Naming, structure, etc.]
+
+## DO NOT
+- [Anti-pattern or rejected approach]
+- [Sensitive paths to avoid]
+- [Dangerous operations requiring explicit confirmation]
+
+## Testing Requirements
+- [What must be tested]
+- [How to write tests for this project]
+- [Where test files live]
+```
+
+## A Real CLAUDE.md Example
+
+Here's a complete, filled-in example for a SaaS application:
+
+```md
+# Context Keeper — Web App
+
+## What This Project Is
+Context Keeper is a context lifecycle manager for AI coding agents. It auto-captures
+architectural decisions from Claude Code session transcripts and syncs them to CLAUDE.md.
+Target users: developers spending $100–500/month on AI coding tools.
+
+## Tech Stack
+- Language: TypeScript 5.8, strict mode enabled
+- Framework: Next.js 15.3, App Router only (no Pages Router)
+- Database: PostgreSQL via Prisma 7 — use `npm run db:generate` after schema changes
+- Auth: Auth0 v3 via @auth0/nextjs-auth0 — session-based, not JWT
+- Styling: Tailwind CSS 3.4 — utility classes, no CSS modules
+- Testing: Vitest + @testing-library/react — tests co-located as [file].test.ts
+- Email: Resend via @resend/node
+- Payments: Stripe (webhooks in app/api/webhooks/stripe/route.ts)
+
+## Key Commands
+- Dev: npm run dev (port 3000)
+- Tests: npm run test (Vitest)
+- Build: npm run build
+- Type check: npx tsc --noEmit
+- DB: npm run db:migrate (dev) / npm run db:generate (after schema change)
+- Lint: npm run lint
+
+## File Structure
+- app/(protected)/ — authenticated routes (dashboard, settings, billing)
+- app/(public)/ — public routes (blog, landing pages)
+- app/api/ — API route handlers
+- components/[domain]/ — domain-specific components (e.g., components/blog/)
+- lib/ — utilities, schema builders, content readers
+- content/blog/ — MDX article files
+
+## Architecture Decisions
+- Auth: Auth0, NOT NextAuth or Passport — managed sessions, SOC 2 path, API tokens via M2M
+- Database: Prisma, NOT Drizzle — type-safe generated client, migration tooling
+- API style: Next.js App Router route handlers — NO tRPC (team familiarity, simpler)
+- Error handling: return errors as values — do NOT throw in API handlers; use try/catch + return
+- Blog: File-based MDX via next-mdx-remote/rsc — NO headless CMS, files in content/blog/
+- Daemon: Node.js CLI, NOT Python — TypeScript consistency with web app
+
+## Coding Standards
+- Imports: use @/ alias for all internal imports (configured in tsconfig.json)
+- Components: React 19 with hooks — no class components
+- Database queries: always use Prisma client from lib/prisma.ts — no raw SQL unless unavoidable
+- API response shape: { data: T } for success, { error: string } for failure
+- Auth in routes: use getSession() from @auth0/nextjs-auth0 — check session before every protected action
+- Types: define in the file where used; share only if used in 3+ places
+
+## DO NOT
+- Do NOT use localStorage or sessionStorage for any auth state (XSS risk)
+- Do NOT create new database tables without a Prisma migration
+- Do NOT add new npm dependencies without checking if built-in browser APIs suffice
+- Do NOT touch .env files — reference env vars by name, never set values
+- Do NOT use `any` type — use `unknown` and narrow with type guards if needed
+- Do NOT use the Pages Router — all routes are in app/
+
+## Testing Requirements
+- New API routes: test with Vitest + supertest or mock fetch
+- New utility functions: unit test the function directly
+- Components: test user interaction, not implementation details
+- Tests live alongside source files: auth.ts → auth.test.ts in the same directory
+- Mock external services (Stripe, Auth0) — use vi.mock() for external dependencies
+```
+
+<FigureImage src="https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e" alt="Structured notes and template documents organized on a desk — representing the CLAUDE.md file structure and organization" width={1200} height={630} credit="Unsplash" />
+
+## Section-by-Section Guidance
+
+### "What This Project Is"
+
+Write this for an agent joining the project cold. What would it need to understand in 3 sentences to be effective? Include: what the product does, who uses it, and the key technical fact that shapes everything else.
+
+### "Tech Stack"
+
+Be specific about versions and choices. The agent knows all the alternatives — your job is to eliminate ambiguity. "Next.js App Router" tells it to use `app/` directory. "Prisma 7" tells it about the breaking changes in Prisma 7 (like requiring `DATABASE_URL` for `generate`).
+
+### "Architecture Decisions"
+
+This is the highest-value section. Include every decision the agent would otherwise question or re-propose. Use the format: "We chose X (not Y) because Z."
+
+Every decision entry should implicitly answer: "What would a reasonable developer propose as an alternative, and why did we reject it?"
+
+### "DO NOT"
+
+This section prevents the agent from re-proposing rejected patterns. Specific prohibitions ("Do NOT use localStorage for auth state") are more effective than general guidelines ("be careful with security").
+
+### "Testing Requirements"
+
+Tell the agent what good test coverage looks like for your project. Without this, the agent's test quality varies wildly — sometimes writing excellent tests, sometimes writing no tests at all.
+
+## Keeping CLAUDE.md Current
+
+A stale `CLAUDE.md` is worse than no `CLAUDE.md` — it gives the agent confident but wrong information.
+
+Update `CLAUDE.md` when:
+- You make a significant architectural decision
+- You add a new dependency that shapes how the agent should work
+- You establish a new coding convention during a session
+- An existing entry becomes outdated
+
+**Automatic capture:** Tools like [Context Keeper](/) analyze session transcripts and automatically extract architectural decisions, offering to update `CLAUDE.md` without a manual step. This removes the discipline bottleneck — decisions get captured in the flow of work, not after. See [How to Persist Architectural Decisions Across AI Sessions](/blog/how-to-persist-architectural-decisions) for more on this approach.
+
+**Manual discipline:** If you're updating manually, the best time is immediately after a session. Add a `/update-context` custom skill that prompts Claude Code to review the session and suggest `CLAUDE.md` updates before you close.
+
+## CLAUDE.md for Large Repositories
+
+In a monorepo or large codebase, one root `CLAUDE.md` isn't enough. Claude Code reads `CLAUDE.md` files in any directory it's working in — use this to your advantage:
+
+```
+packages/
+  api/
+    CLAUDE.md     # API-specific decisions (auth patterns, error handling)
+  web/
+    CLAUDE.md     # Frontend decisions (component patterns, styling)
+  shared/
+    CLAUDE.md     # Shared utilities and types
+CLAUDE.md         # Root — project overview, cross-cutting decisions
+```
+
+Module-level `CLAUDE.md` files are shorter and more targeted. The agent reads the root one plus any relevant module files when working in that module.
+
+<FigureImage src="https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b" alt="Organized folder and file structure representing CLAUDE.md organization across a large codebase" width={1200} height={630} credit="Unsplash" />
+
+## Key Takeaways
+
+- `CLAUDE.md` is a briefing document for your agent, not human documentation — write for machines
+- Structure: Overview → Tech Stack → Commands → Architecture Decisions → Standards → DO NOT → Testing
+- Aim for 200–600 words — dense and specific, not comprehensive
+- Rejections are as important as choices — tell the agent what NOT to do
+- Keep it current — a stale `CLAUDE.md` is worse than none
+- For large codebases: use module-level `CLAUDE.md` files in subdirectories
+- Automate updates with Context Keeper or a post-session update skill
+
+The CLAUDE.md file is the highest-ROI investment in your AI coding workflow. An hour spent writing a good one saves hours of re-explaining context across every future session.
+
+Related: [What Is a CLAUDE.md File and Why It Matters](/blog/what-is-a-claude-md-file) · [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices) · [How to Persist Architectural Decisions Across AI Sessions](/blog/how-to-persist-architectural-decisions)

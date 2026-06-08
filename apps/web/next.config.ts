@@ -1,11 +1,25 @@
 import type { NextConfig } from 'next'
 import path from 'path'
 
-// Next.js version: currently pinned to 15.x (stable).
-// If user confirms Next.js 16, bump "next" in package.json — App Router APIs are identical.
 const nextConfig: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../../'),
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'plus.unsplash.com',
+      },
+    ],
+  },
 }
 
 export default nextConfig

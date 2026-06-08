@@ -1,0 +1,260 @@
+---
+title: "Standardizing AI Agent Setup Across a Development Team"
+slug: "standardizing-ai-agent-setup-team"
+description: "When every developer on your team uses AI agents differently, you get inconsistent results and wasted effort. Here's how to standardize AI agent configuration across your team."
+cluster: "Teams & Architecture Docs"
+keywords: ["team ai agent standards", "standardize ai coding team", "team claude code setup", "ai coding team standards"]
+primaryKeyword: "team ai agent standards"
+author: "Context Keeper Team"
+datePublished: "2026-07-30"
+readingTime: 8
+heroImage:
+  src: "https://images.unsplash.com/photo-1553877522-43269d4ea984"
+  alt: "Uniform team configuration setup representing standardized AI agent setup across a development team"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "team standardization configuration uniform"
+faq:
+  - q: "Why standardize AI agent setup across a team?"
+    a: "Without standardization, each developer has different context files, different tool configurations, and different habits — leading to inconsistent code quality, divergent patterns, and the AI making contradictory decisions for different team members."
+  - q: "What should be standardized vs left to individual preference?"
+    a: "Standardize: AGENTS.md / CLAUDE.md content, approved AI tools list, code review requirements for AI output, and security constraints. Leave to individual preference: which specific tool to use, personal workflow habits, model selection."
+  - q: "How do you enforce AI agent standards without becoming bureaucratic?"
+    a: "Keep standards minimal and valuable. A shared AGENTS.md plus a short 'AI usage guide' is usually enough. Enforce through tooling (shared hooks, CI checks) rather than process."
+relatedSlugs:
+  - "sharing-ai-context-across-dev-team"
+  - "agents-md-vs-claude-md"
+  - "measuring-roi-ai-coding-tools-teams"
+  - "keeping-ai-agents-from-breaking-architecture"
+draft: false
+---
+
+<Tldr>
+- Standardize: AGENTS.md, approved tools, review requirements
+- Leave flexible: specific tool choice, personal workflow
+- Enforce via tooling (shared hooks, CI) not process
+- Minimum viable standard: shared AGENTS.md + one-page AI usage guide
+</Tldr>
+
+## The Problem with Ad-Hoc Team AI Setups
+
+**When every developer on a team configures their AI coding agent independently, you get a fragmented team: different context files, different tool choices, different habits, and AI agents making contradictory decisions for different developers working on the same codebase.** One developer's Claude Code knows about the Auth0 decision; another's Cursor doesn't. One generates code that follows your error pattern; another generates code that violates it.
+
+Standardization isn't about restricting how developers use AI — it's about ensuring the shared decisions are consistently accessible to every developer's agent, regardless of which tool they prefer.
+
+## What to Standardize (and What Not To)
+
+**Standardize:**
+- The shared context files (AGENTS.md content, format, update process)
+- The approved AI tool list (which tools are supported and have shared context)
+- Code review requirements for AI-generated code
+- Security constraints (which files and systems AI agents can access)
+- The update process for shared context (how decisions get from individual sessions to AGENTS.md)
+
+**Leave to individual preference:**
+- Which specific AI coding tool to use (Claude Code vs Cursor vs Cline)
+- Personal workflow habits and session management
+- Model selection (which Claude model to use within Claude Code)
+- Personal shortcuts and individual CLAUDE.md extensions
+
+The test for standardization: "If this isn't consistent across the team, does it produce inconsistent code?" Yes → standardize. No → leave personal.
+
+## The Minimum Viable Standard
+
+For most teams, the minimum viable standard is:
+
+1. **A shared AGENTS.md** committed to the repository
+2. **A one-page AI usage guide** covering approved tools and expectations
+3. **A PR template addition** prompting context updates when architecture changes
+
+This three-element standard costs 2–3 hours to set up, takes minutes to maintain weekly, and eliminates the most common sources of AI-generated inconsistency.
+
+**The one-page AI usage guide** covers:
+- Approved tools (which AI coding tools are supported and have shared context)
+- Context file location and format (where AGENTS.md is, how it's structured)
+- Review requirements (what to check in AI-generated code before merging)
+- What to do when the AI contradicts established patterns
+- How to propose updates to shared context
+
+Distribute this as `docs/ai-usage.md` — keep it short, current, and linked from the main README.
+
+<FigureImage src="https://images.unsplash.com/photo-1553877522-43269d4ea984" alt="Development team with standardized configuration representing unified AI agent setup standards across a development team" width={1200} height={630} credit="Unsplash" />
+
+## Setting Up the Shared Context Foundation
+
+**Step 1: Create and commit AGENTS.md**
+
+```bash
+touch AGENTS.md
+```
+
+Write the shared context (see [Sharing AI Context Across a Development Team](/blog/sharing-ai-context-across-dev-team) for content guidance). Commit and push.
+
+```bash
+git add AGENTS.md
+git commit -m "feat: add shared AI agent context (AGENTS.md)"
+git push
+```
+
+Every developer now gets shared context on their next pull.
+
+**Step 2: Tool-specific wrappers**
+
+For Claude Code users, a thin `CLAUDE.md` that extends AGENTS.md:
+
+```md
+# Claude Code Context
+<!-- See AGENTS.md for shared project context -->
+
+## Claude Code-Specific
+- MCP servers: github, postgres (see .claude/settings.json)
+- Pre-commit hook: runs typecheck + lint
+- Use /compact before long refactoring sessions
+```
+
+For Cursor users, a `.cursorrules` that references AGENTS.md:
+
+```
+See AGENTS.md for project architecture and conventions.
+
+Cursor-specific: prefer Tab for completions in boilerplate code; 
+use Composer for multi-file refactors.
+```
+
+**Step 3: PR template update**
+
+In `.github/pull_request_template.md`:
+
+```md
+## AI Context (if applicable)
+- [ ] Updated AGENTS.md with new architectural decisions
+- [ ] No architectural changes in this PR (skip)
+```
+
+This single checkbox is often enough to ensure AGENTS.md stays current.
+
+## Enforcing Standards Without Bureaucracy
+
+Heavy process requirements for AI usage create friction without proportionate value. Two enforcement mechanisms that don't require process:
+
+**CI check for AGENTS.md staleness:**
+
+A lightweight GitHub Action that checks if significant architecture-related files changed without a corresponding AGENTS.md update:
+
+```yaml
+name: Check AI Context
+on: [pull_request]
+jobs:
+  check-agents-md:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check if AGENTS.md updated with arch changes
+        run: |
+          ARCH_CHANGED=$(git diff --name-only origin/main HEAD | grep -E "(auth|database|api|prisma)" | wc -l)
+          AGENTS_CHANGED=$(git diff --name-only origin/main HEAD | grep "AGENTS.md" | wc -l)
+          if [ $ARCH_CHANGED -gt 2 ] && [ $AGENTS_CHANGED -eq 0 ]; then
+            echo "Warning: Architecture files changed but AGENTS.md was not updated."
+            echo "Consider updating AGENTS.md with any new architectural decisions."
+          fi
+```
+
+This warns (not blocks) when architecture files change without a context update. The developer can dismiss it if the change is trivial.
+
+**Shared hook configuration:**
+
+For Claude Code teams, distribute a shared `.claude/settings.json` that all Claude Code users start from:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "context-keeper capture" }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": ["Read(*)", "Edit(*)", "Write(*)", "Bash(npm run *)"],
+    "deny": ["Bash(git push --force)", "Bash(rm -rf *)"]
+  }
+}
+```
+
+Commit this to the repo. New developers copy it to their `~/.claude/settings.json` and get the team's standard configuration immediately.
+
+## Security Standardization
+
+AI coding agents need access constraints — not to be restrictive, but to prevent accidental damage and limit the blast radius of mistakes.
+
+**Standard permission model (Claude Code example):**
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Edit(apps/**)",
+      "Write(apps/**)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(rm -rf *)",
+      "Bash(DROP TABLE *)",
+      "Read(.env)",
+      "Read(.env.local)",
+      "Edit(.env*)"
+    ]
+  }
+}
+```
+
+This allows the agent to read, edit, run tests, and commit — but blocks force pushes, recursive deletes, and access to environment files with secrets.
+
+Distribute this as the team's base permission model. Individual developers can extend it locally if their specific workflow requires broader access.
+
+<FigureImage src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0" alt="Security and configuration management dashboard representing standardized AI agent permissions and team configuration" width={1200} height={630} credit="Unsplash" />
+
+## Code Review Standards for AI-Generated Code
+
+AI-generated code requires the same review standards as human-written code — but reviewers should specifically look for certain categories of AI-specific issues:
+
+**Standard AI code review checklist:**
+- [ ] Follows established patterns (compare against AGENTS.md patterns)
+- [ ] No anti-patterns from AGENTS.md DO NOT list
+- [ ] Auth checks in place for all protected routes
+- [ ] No hardcoded values that should be environment variables
+- [ ] Tests included (same requirement as human-written code)
+- [ ] No new dependencies added without discussion
+
+This doesn't need to be a separate process — add these checks to your existing PR review template as a reminder for AI-generated code sections.
+
+## Measuring Standard Adoption
+
+Track whether standards are working by measuring outcomes, not compliance:
+- **Pattern violation rate:** how often do PRs include code that violates AGENTS.md patterns?
+- **Context freshness:** when was AGENTS.md last updated vs. when was the last architectural change?
+- **New developer ramp time:** how long does it take a new developer to make their first productive AI-assisted contribution?
+- **Context re-explanation time:** are developers spending less time re-establishing context at session start?
+
+If pattern violations stay below ~10% of PRs and new developers are productive in hours rather than days, your standards are working.
+
+## Key Takeaways
+
+- Standardize: AGENTS.md, approved tools, code review requirements, security constraints, update process
+- Leave flexible: which tool to use, personal workflow, model selection
+- Minimum viable standard: shared AGENTS.md + one-page AI usage guide + PR template addition
+- Enforce with tooling (CI checks, shared hook config) not process bureaucracy
+- Security model: standard permissions that allow productive work while blocking destructive actions
+- Measure outcomes (pattern violation rate, new developer ramp time) not compliance
+
+Related: [Sharing AI Context Across a Development Team](/blog/sharing-ai-context-across-dev-team) · [AGENTS.md vs CLAUDE.md: The Agent Instruction File Standard](/blog/agents-md-vs-claude-md) · [Measuring ROI of AI Coding Tools for Teams](/blog/measuring-roi-ai-coding-tools-teams)
