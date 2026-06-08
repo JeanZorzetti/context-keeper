@@ -14,7 +14,10 @@ export default async function Home() {
       {/* Navigation */}
       <nav className="flex justify-between items-center px-8 py-4 bg-white shadow-sm">
         <div className="text-2xl font-bold text-indigo-600">Context Keeper</div>
-        <div className="space-x-4">
+        <div className="flex items-center space-x-6">
+          <Link href="/blog" className="text-gray-600 hover:text-indigo-600">
+            Blog
+          </Link>
           <Link
             href="/api/auth/login"
             className="px-4 py-2 text-indigo-600 hover:text-indigo-700"
@@ -137,8 +140,12 @@ export default async function Home() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white px-8 py-8">
-        <div className="max-w-4xl mx-auto text-center text-gray-400">
-          <p>© 2026 Context Keeper. Part of the ROI Labs family.</p>
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-gray-400">© 2026 Context Keeper. Part of the ROI Labs family.</p>
+          <div className="flex space-x-6 text-gray-400 text-sm">
+            <Link href="/blog" className="hover:text-white">Blog</Link>
+            <Link href="/api/auth/login" className="hover:text-white">Get Started</Link>
+          </div>
         </div>
       </footer>
     </main>
