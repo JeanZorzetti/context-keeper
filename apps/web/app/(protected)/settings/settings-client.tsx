@@ -314,26 +314,26 @@ export default function SettingsClient({
         {/* Sidebar - Help */}
         <div className="lg:col-span-1">
           <div className="bg-indigo-50 rounded-lg p-6 sticky top-24">
-            <h3 className="font-semibold text-indigo-900 mb-4">Need Help?</h3>
+            <h3 className="font-semibold text-indigo-900 mb-4">Precisa de ajuda?</h3>
             <ul className="space-y-3 text-sm text-indigo-800">
               <li>
-                <a href="#" className="hover:underline">
-                  → Installation Guide
+                <a href="/help/installation" className="hover:underline">
+                  → Guia de Instalação
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:underline">
-                  → API Documentation
+                <a href="/help/api" className="hover:underline">
+                  → Documentação da API
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:underline">
-                  → Troubleshooting
+                <a href="/help/troubleshooting" className="hover:underline">
+                  → Resolução de Problemas
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:underline">
-                  → Contact Support
+                <a href="/help/support" className="hover:underline">
+                  → Contatar Suporte
                 </a>
               </li>
             </ul>
