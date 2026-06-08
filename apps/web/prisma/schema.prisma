@@ -26,6 +26,7 @@ model User {
   autoCommit Boolean @default(true)
   apiToken  String? @unique
   projects  Project[]
+  tickets   Ticket[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -48,4 +49,21 @@ model Decision {
   text      String
   sessionId String   // basename of .jsonl
   capturedAt DateTime @default(now())
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+model Ticket {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  message   String       @db.Text
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
