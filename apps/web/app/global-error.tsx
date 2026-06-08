@@ -8,10 +8,12 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Global Error</h2>
-      <p>{error.message}</p>
-      <button onClick={() => reset()}>Try again</button>
-    </div>
+    <html>
+      <body style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+        <h2>Something went wrong</h2>
+        <p>{error.message}</p>
+        <button onClick={() => reset()}>Try again</button>
+      </body>
+    </html>
   );
 }
