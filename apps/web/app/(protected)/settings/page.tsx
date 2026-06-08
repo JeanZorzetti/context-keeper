@@ -8,7 +8,6 @@ export default async function Settings() {
   const prisma = getPrisma();
   const session = await getSession();
 
-  // Get user settings from database
   const user = await prisma.user.findUnique({
     where: { auth0Id: session?.user?.sub || "" },
   });
@@ -16,7 +15,10 @@ export default async function Settings() {
   return (
     <SettingsClient
       userEmail={session?.user?.email}
-      initialGroqApiKey={user?.groqApiKey}
+      initialAiProvider={user?.aiProvider}
+      initialAiApiKey={user?.aiApiKey}
+      initialAiModel={user?.aiModel}
+      initialAiBaseUrl={user?.aiBaseUrl}
       initialAutoCommit={user?.autoCommit ?? true}
       initialApiToken={user?.apiToken}
     />

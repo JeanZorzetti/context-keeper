@@ -22,7 +22,10 @@ model User {
   email      String    @unique
   plan       Plan      @default(FREE)
   stripeId   String?
-  groqApiKey String?
+  aiProvider String?   @default("groq")
+  aiApiKey   String?
+  aiModel    String?
+  aiBaseUrl  String?
   autoCommit Boolean   @default(true)
   apiToken   String?   @unique
   projects   Project[]

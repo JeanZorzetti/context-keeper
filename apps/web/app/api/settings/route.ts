@@ -12,7 +12,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Get the user
     let user = await prisma.user.findUnique({
       where: { auth0Id: session.user.sub },
     });
@@ -23,19 +22,15 @@ export async function POST(req: Request) {
       });
     }
 
-    // Parse request body
-    const { groqApiKey, autoCommit } = await req.json();
+    const { aiProvider, aiApiKey, aiModel, aiBaseUrl, autoCommit } = await req.json();
 
-    // Build update data - only include fields that were provided
-    const updateData: any = {};
-    if (groqApiKey !== undefined) {
-      updateData.groqApiKey = groqApiKey || null; // Allow clearing the key
-    }
-    if (autoCommit !== undefined) {
-      updateData.autoCommit = autoCommit;
-    }
+    const updateData: Record<string, unknown> = {};
+    if (aiProvider !== undefined) updateData.aiProvider = aiProvider || "groq";
+    if (aiApiKey !== undefined) updateData.aiApiKey = aiApiKey || null;
+    if (aiModel !== undefined) updateData.aiModel = aiModel || null;
+    if (aiBaseUrl !== undefined) updateData.aiBaseUrl = aiBaseUrl || null;
+    if (autoCommit !== undefined) updateData.autoCommit = autoCommit;
 
-    // Update user settings
     user = await prisma.user.update({
       where: { id: user.id },
       data: updateData,
@@ -46,7 +41,10 @@ export async function POST(req: Request) {
         success: true,
         user: {
           id: user.id,
-          groqApiKey: user.groqApiKey,
+          aiProvider: user.aiProvider,
+          aiApiKey: user.aiApiKey,
+          aiModel: user.aiModel,
+          aiBaseUrl: user.aiBaseUrl,
           autoCommit: user.autoCommit,
         },
       }),

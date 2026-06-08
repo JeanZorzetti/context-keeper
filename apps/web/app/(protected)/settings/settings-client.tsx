@@ -2,20 +2,45 @@
 
 import { useState } from "react";
 
+const PROVIDER_LINKS: Record<string, { label: string; url: string; placeholder: string }> = {
+  groq:      { label: "console.groq.com", url: "https://console.groq.com", placeholder: "gsk_..." },
+  openai:    { label: "platform.openai.com/api-keys", url: "https://platform.openai.com/api-keys", placeholder: "sk-..." },
+  anthropic: { label: "console.anthropic.com", url: "https://console.anthropic.com", placeholder: "sk-ant-..." },
+  gemini:    { label: "aistudio.google.com/apikey", url: "https://aistudio.google.com/apikey", placeholder: "AIza..." },
+  ollama:    { label: "", url: "", placeholder: "" },
+};
+
+const MODEL_DEFAULTS: Record<string, string> = {
+  groq:      "llama-3.3-70b-versatile",
+  openai:    "gpt-4o-mini",
+  anthropic: "claude-haiku-4-5",
+  gemini:    "gemini-2.0-flash",
+  ollama:    "llama3.1",
+};
+
 interface SettingsClientProps {
   userEmail?: string;
-  initialGroqApiKey?: string | null;
+  initialAiProvider?: string | null;
+  initialAiApiKey?: string | null;
+  initialAiModel?: string | null;
+  initialAiBaseUrl?: string | null;
   initialAutoCommit?: boolean;
   initialApiToken?: string | null;
 }
 
 export default function SettingsClient({
   userEmail,
-  initialGroqApiKey,
+  initialAiProvider,
+  initialAiApiKey,
+  initialAiModel,
+  initialAiBaseUrl,
   initialAutoCommit = true,
   initialApiToken,
 }: SettingsClientProps) {
-  const [groqApiKey, setGroqApiKey] = useState(initialGroqApiKey || "");
+  const [aiProvider, setAiProvider] = useState(initialAiProvider || "groq");
+  const [aiApiKey, setAiApiKey] = useState(initialAiApiKey || "");
+  const [aiModel, setAiModel] = useState(initialAiModel || "");
+  const [aiBaseUrl, setAiBaseUrl] = useState(initialAiBaseUrl || "");
   const [autoCommit, setAutoCommit] = useState(initialAutoCommit);
   const [apiToken, setApiToken] = useState(initialApiToken || "");
   const [loading, setLoading] = useState(false);
@@ -35,7 +60,10 @@ export default function SettingsClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          groqApiKey: groqApiKey || null,
+          aiProvider,
+          aiApiKey: aiApiKey || null,
+          aiModel: aiModel || null,
+          aiBaseUrl: aiBaseUrl || null,
           autoCommit,
         }),
       });
@@ -121,38 +149,87 @@ export default function SettingsClient({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Settings Sections */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Groq API Configuration */}
+          {/* AI Provider Configuration */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Groq API Configuration
+              AI Provider
             </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Configure your Groq API key to enable automatic decision extraction.
+              Choose the AI provider for automatic decision extraction. The daemon fetches this config from the dashboard.
             </p>
 
             <form onSubmit={handleSaveSettings} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Groq API Key
+                  Provider
+                </label>
+                <select
+                  value={aiProvider}
+                  onChange={(e) => setAiProvider(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="groq">Groq (free tier available)</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="ollama">Ollama (local)</option>
+                </select>
+              </div>
+
+              {aiProvider !== "ollama" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={PROVIDER_LINKS[aiProvider]?.placeholder ?? ""}
+                    value={aiApiKey}
+                    onChange={(e) => setAiApiKey(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  {PROVIDER_LINKS[aiProvider]?.url && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Get your key at{" "}
+                      <a
+                        href={PROVIDER_LINKS[aiProvider].url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:underline"
+                      >
+                        {PROVIDER_LINKS[aiProvider].label}
+                      </a>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {aiProvider === "ollama" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ollama Base URL
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="http://localhost:11434"
+                    value={aiBaseUrl}
+                    onChange={(e) => setAiBaseUrl(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Model <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
                 <input
-                  type="password"
-                  placeholder="gsk_..."
-                  value={groqApiKey}
-                  onChange={(e) => setGroqApiKey(e.target.value)}
+                  type="text"
+                  placeholder={`Default: ${MODEL_DEFAULTS[aiProvider] ?? "provider default"}`}
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Get your API key from{" "}
-                  <a
-                    href="https://console.groq.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-600 hover:underline"
-                  >
-                    console.groq.com
-                  </a>
-                </p>
               </div>
 
               {message && (
@@ -172,7 +249,7 @@ export default function SettingsClient({
                 disabled={loading}
                 className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Saving..." : "Save API Key"}
+                {loading ? "Saving..." : "Save AI Settings"}
               </button>
             </form>
           </div>
