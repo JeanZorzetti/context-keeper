@@ -14,7 +14,8 @@ export function startWatcher(onSessionEnded: SessionEndedCallback): () => void {
   const watchDir = path.join(os.homedir(), '.claude', 'projects');
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  const watcher = chokidar.watch(`${watchDir}/**/*.jsonl`, {
+  // chokidar v4 dropped glob support — watch the directory and filter by extension
+  const watcher = chokidar.watch(watchDir, {
     persistent: true,
     ignoreInitial: true,
     awaitWriteFinish: {
@@ -24,6 +25,7 @@ export function startWatcher(onSessionEnded: SessionEndedCallback): () => void {
   });
 
   function scheduleSessionEnd(filePath: string) {
+    if (!filePath.endsWith('.jsonl')) return;
     const existing = timers.get(filePath);
     if (existing) clearTimeout(existing);
 

@@ -1,39 +1,52 @@
 # Context Keeper Daemon
 
-A daemon that watches Claude Code transcripts, extracts architectural decisions via Groq AI, and automatically updates CLAUDE.md with decision history.
+A daemon that watches Claude Code transcripts, extracts architectural decisions via AI, and automatically updates CLAUDE.md with decision history.
 
-## Installation
+## Quick start (local mode — no account needed)
 
 ```bash
+export GROQ_API_KEY=gsk_...        # or OPENAI_API_KEY / ANTHROPIC_API_KEY / GEMINI_API_KEY / OLLAMA_BASE_URL
+npx @jeanzorzetti/context-keeper install-hooks   # process sessions the moment they end
 npx @jeanzorzetti/context-keeper start
 ```
 
 ## Features
 
-- Watches Claude Code transcript directories for new entries
-- Extracts decisions using Groq API
-- Automatically maintains CLAUDE.md with decision metadata
-- Git integration for tracking changes
+- **Instant capture** — registers a Claude Code `SessionEnd` hook; sessions are processed the moment they end (a 5-minute inactivity watcher remains as fallback)
+- **Quality-gated extraction** — generic filler decisions ("because it ensures consistency") are filtered out; near-duplicate rephrasings are deduplicated semantically
+- **Long-session support** — transcripts beyond the context window are chunked and extracted map-reduce style, so early decisions aren't lost
+- **Local-first** — works fully offline with any provider API key (Groq, OpenAI, Anthropic, Gemini, or local Ollama)
+- **Resilient dashboard sync** — failed syncs persist to a disk queue and replay automatically
+- Automatically maintains `CLAUDE.md` / `AGENTS.md` (capped, marker-delimited section that never touches your edits)
+- Optional git auto-commit of context files
 
 ## Configuration
 
-Set up environment variables in `.env`:
+Local mode (pick one provider):
 
-- `GROQ_API_KEY` - Groq API key for decision extraction
-- `CLAUDE_PATH` - Path to watch for Claude Code transcripts (default: current directory)
+| Variable | Provider |
+|---|---|
+| `GROQ_API_KEY` | Groq (default model: llama-3.3-70b-versatile) |
+| `OPENAI_API_KEY` | OpenAI |
+| `ANTHROPIC_API_KEY` | Anthropic |
+| `GEMINI_API_KEY` | Gemini |
+| `OLLAMA_BASE_URL` | Ollama (fully offline) |
 
-## Usage
+Optional overrides: `CONTEXT_KEEPER_PROVIDER` (force a provider), `CONTEXT_KEEPER_MODEL`.
 
-Start the daemon:
+Dashboard mode (provider configured at [context.nimblabs.com](https://context.nimblabs.com)):
+
+- `CONTEXT_KEEPER_API_URL` — dashboard URL
+- `CONTEXT_KEEPER_TOKEN` — your API token (Settings → API Token)
+
+## Commands
+
 ```bash
-npx @jeanzorzetti/context-keeper start
+context-keeper start [--auto-commit]   # start the daemon
+context-keeper install-hooks           # register the Claude Code SessionEnd hook
+context-keeper extract <path>          # manually extract from a session .jsonl
+context-keeper status                  # show daemon status
 ```
-
-The daemon will:
-1. Watch your Claude Code transcript directory
-2. Detect new decisions
-3. Extract context via Groq
-4. Update CLAUDE.md with indexed decisions
 
 ## Development
 

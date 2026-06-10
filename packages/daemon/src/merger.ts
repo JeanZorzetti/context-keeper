@@ -1,9 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { dedupeNearDuplicates } from './quality.js';
 
 const MARKER_START = '<!-- context-keeper:start';
 const MARKER_END = '<!-- context-keeper:end -->';
 const SECTION_HEADER = '## Architectural Decisions (auto-captured)';
+
+/** Hard cap on the managed section so CLAUDE.md never grows unboundedly. */
+const MAX_SECTION_DECISIONS = 50;
 
 const MINIMAL_HEADER = `# Project Context\n\n`;
 
@@ -69,16 +73,18 @@ export function mergeDecisions(filePath: string, newDecisions: string[]): void {
     .split('\n')
     .filter((line) => line.startsWith('- ['));
 
-  // Deduplicate: only add decisions not already present (by text)
-  const existingTexts = new Set(existingDecisionLines.map((l) => l.replace(/^- \[\d{4}-\d{2}-\d{2}\] /, '')));
-  const deduplicated = newDecisions.filter((d) => !existingTexts.has(d));
+  // Deduplicate semantically: LLMs rephrase the same decision across sessions,
+  // so exact-text comparison alone lets near-duplicates accumulate forever
+  const existingTexts = existingDecisionLines.map((l) => l.replace(/^- \[\d{4}-\d{2}-\d{2}\] /, ''));
+  const deduplicated = dedupeNearDuplicates(newDecisions, existingTexts);
 
   if (deduplicated.length === 0) return;
 
+  // Cap the section at the newest MAX_SECTION_DECISIONS entries
   const allDecisionLines = [
     ...existingDecisionLines,
     ...deduplicated.map((d) => `- [${timestamp.slice(0, 10)}] ${d}`),
-  ];
+  ].slice(-MAX_SECTION_DECISIONS);
 
   const updatedSection =
     `${MARKER_START} (last updated: ${timestamp}) -->\n` +
@@ -126,147 +132,56 @@ function findGitRoot(dir: string): string | null {
 }
 
 /**
- * Resolves the project directory from a transcript file path.
+ * Resolves the project directory from a transcript file.
  *
- * Claude Code stores transcripts at:
- *   ~/.claude/projects/<encoded-project-path>/<session-id>.jsonl
- *
- * The directory name is encoded differently on Unix vs Windows:
- * - Unix/Linux/Mac: URL-encoded with %2F for path separators
- * - Windows: dash-encoded, where single dashes replace both path separators (\) AND spaces
- *   Example: c--users-jeanz-onedrive-desktop-roi-labs-context-keeper
- *   Maps to: C:\Users\jeanz\OneDrive\Desktop\ROI Labs\context-keeper
- *
- * NOTE: Windows encoding is lossy and cannot be reliably decoded without filesystem context.
- * Strategy: Use filesystem walk + git root discovery to find the actual project directory,
- * ensuring projectName (via path.basename) is always correct and readable.
+ * Primary: Claude Code transcript JSONL lines carry a `cwd` field with the
+ * absolute project path — exact on every OS, no decoding needed.
+ * Fallback (e.g. empty/unreadable transcript): percent-decode the transcript's
+ * parent directory name (~/.claude/projects/<encoded-path>/<session>.jsonl).
+ * The Windows dash-encoding is lossy and is NOT decoded — cwd covers it.
  */
 export function resolveProjectDir(transcriptPath: string): string | null {
-  const parentDir = path.basename(path.dirname(transcriptPath));
+  const fromTranscript = readCwdFromTranscript(transcriptPath);
+  if (fromTranscript) return fromTranscript;
 
-  // Try percent-decoding first (Unix/Linux format: %2F for separator)
+  const parentDir = path.basename(path.dirname(transcriptPath));
   try {
     const decoded = decodeURIComponent(parentDir);
-    // Check if it looks like a valid absolute path
-    if (decoded.startsWith('/') || decoded.match(/^[a-zA-Z]:/)) {
-      // For Unix paths, return as-is (already decoded)
+    if (decoded.startsWith('/') || /^[a-zA-Z]:/.test(decoded)) {
       return decoded;
     }
   } catch {
-    // Fall through to dash-decoding
-  }
-
-  // Try dash-decoding for Windows (lossy format: c--users-path-with-spaces-encoding)
-  if (parentDir.match(/^[a-z]--/)) {
-    try {
-      const driveLetter = parentDir[0].toUpperCase();
-      const driveRoot = driveLetter + ':\\';
-
-      // Search for the real directory by walking from common roots
-      // This allows us to derive the correct projectName from the git root's basename
-      const searchRoots = [
-        path.join(driveRoot, 'Users'),
-        path.join(driveRoot, 'Temp'),
-        path.join(driveRoot, 'Dev'),
-        driveRoot,
-      ];
-
-      for (const root of searchRoots) {
-        if (fs.existsSync(root)) {
-          const found = findProjectRootByEncoding(root, parentDir, 0);
-          if (found) return found;
-        }
-      }
-
-      // Fallback: extract readable projectName from encoding
-      // Returns a constructed path where path.basename() gives the extracted name
-      const projectName = extractProjectNameFromEncoding(parentDir);
-      if (projectName) {
-        return path.join(driveRoot, projectName);
-      }
-
-      // Last resort: unable to resolve
-      return null;
-    } catch {
-      return null;
-    }
+    // invalid percent-encoding
   }
 
   return null;
 }
 
-/**
- * Searches for a real directory that matches the encoded path pattern,
- * then climbs to find its git root (project root).
- * Returns the git root path, ensuring projectName via path.basename() is correct.
- */
-function findProjectRootByEncoding(
-  currentPath: string,
-  encodedPath: string,
-  depth: number,
-): string | null {
-  if (depth > 6) return null; // Limit recursion depth
+const CWD_SCAN_MAX_LINES = 100;
 
+function readCwdFromTranscript(transcriptPath: string): string | null {
+  let raw: string;
   try {
-    const entries = fs.readdirSync(currentPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-
-      const normalizedName = entry.name.toLowerCase();
-      const encodedName = normalizedName.replace(/\s+/g, '-');
-
-      // Check if this directory's encoded name appears in the transcript encoding
-      if (encodedPath.includes(encodedName)) {
-        const fullPath = path.join(currentPath, entry.name);
-
-        // Found a matching directory — now climb to its git root
-        const gitRoot = findGitRoot(fullPath);
-        if (gitRoot) {
-          // Verify this is a real project (has .git)
-          return gitRoot;
-        }
-
-        // If no git root found but we matched, continue searching deeper
-        // (might be an intermediate directory, not the project root)
-        const found = findProjectRootByEncoding(fullPath, encodedPath, depth + 1);
-        if (found) return found;
-      }
-    }
+    raw = fs.readFileSync(transcriptPath, 'utf-8');
   } catch {
-    // Skip on permission errors or other I/O issues
+    return null;
+  }
+
+  let scanned = 0;
+  for (const line of raw.split('\n')) {
+    if (scanned >= CWD_SCAN_MAX_LINES) break;
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    scanned++;
+    try {
+      const parsed = JSON.parse(trimmed) as { cwd?: unknown };
+      if (typeof parsed.cwd === 'string' && parsed.cwd.length > 0) {
+        return parsed.cwd;
+      }
+    } catch {
+      // skip malformed lines
+    }
   }
 
   return null;
-}
-
-/**
- * Extracts a readable project name from the Windows dash-encoded path.
- * Since encoding is lossy (single dashes = separators OR spaces), uses heuristic:
- * Prefers last 2 segments (typical project naming), falls back to last segment.
- *
- * Example: 'c--users-jeanz-onedrive-desktop-roi-labs-context-keeper'
- *   → segments: ['c', 'users', 'jeanz', 'onedrive', 'desktop', 'roi', 'labs', 'context', 'keeper']
- *   → returns: 'context-keeper' (last 2 segments)
- *
- * Example: 'c--users-my-project'
- *   → segments: ['c', 'users', 'my', 'project']
- *   → returns: 'my-project' (last 2 segments)
- */
-function extractProjectNameFromEncoding(encodedPath: string): string | null {
-  if (!encodedPath.match(/^[a-z]--/)) return null;
-
-  const rest = encodedPath.substring(3); // Skip 'X--'
-  const segments = rest.split('-').filter((s) => s.length > 0);
-
-  if (segments.length === 0) return null;
-  if (segments.length === 1) return segments[0];
-
-  // Prefer last 2 segments (typical: 'context-keeper', 'my-project')
-  if (segments.length >= 2) {
-    return segments.slice(-2).join('-');
-  }
-
-  // Fallback: last segment only
-  return segments[segments.length - 1] || null;
 }

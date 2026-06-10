@@ -1,4 +1,4 @@
-import { getSession } from "@auth0/nextjs-auth0";
+import { getSession } from "@/lib/auth0";
 import { getPrisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/admin";
 

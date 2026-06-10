@@ -153,59 +153,61 @@ describe('findContextFiles', () => {
 // resolveProjectDir
 // ---------------------------------------------------------------------------
 describe('resolveProjectDir', () => {
-  it('decodes URL-encoded project path from transcript path (Unix format)', () => {
-    const transcriptPath = '/home/user/.claude/projects/%2Fhome%2Fuser%2Fmyproject/abc123.jsonl';
+  function writeTranscript(dirName: string, lines: string[]): string {
+    const sessionDir = path.join(tmpDir, '.claude', 'projects', dirName);
+    fs.mkdirSync(sessionDir, { recursive: true });
+    const transcriptPath = path.join(sessionDir, 'abc123.jsonl');
+    fs.writeFileSync(transcriptPath, lines.join('\n') + '\n', 'utf-8');
+    return transcriptPath;
+  }
+
+  it('reads cwd from the first transcript line that carries one', () => {
+    const transcriptPath = writeTranscript('c--users-jeanz-onedrive-desktop-roi-labs-context-keeper', [
+      JSON.stringify({ type: 'operation', sessionId: 'abc123' }),
+      JSON.stringify({ type: 'attachment', cwd: 'C:\\Users\\jeanz\\OneDrive\\Desktop\\ROI Labs\\context-keeper' }),
+      JSON.stringify({ message: { role: 'user', content: 'hi' } }),
+    ]);
+
     const result = resolveProjectDir(transcriptPath);
-    expect(result).toBe('/home/user/myproject');
+    expect(result).toBe('C:\\Users\\jeanz\\OneDrive\\Desktop\\ROI Labs\\context-keeper');
   });
 
-  it('returns null for paths with invalid URL encoding', () => {
-    const transcriptPath = '/home/user/.claude/projects/%ZZ/abc.jsonl';
-    const result = resolveProjectDir(transcriptPath);
+  it('reads Unix cwd from transcript', () => {
+    const transcriptPath = writeTranscript('-home-user-myproject', [
+      JSON.stringify({ type: 'attachment', cwd: '/home/user/myproject' }),
+    ]);
+
+    expect(resolveProjectDir(transcriptPath)).toBe('/home/user/myproject');
+  });
+
+  it('skips malformed lines while scanning for cwd', () => {
+    const transcriptPath = writeTranscript('c--dev-app', [
+      'not json at all',
+      JSON.stringify({ cwd: 'C:\\dev\\app' }),
+    ]);
+
+    expect(resolveProjectDir(transcriptPath)).toBe('C:\\dev\\app');
+  });
+
+  it('falls back to percent-decoding the parent dir when transcript has no cwd', () => {
+    const transcriptPath = writeTranscript('%2Fhome%2Fuser%2Fmyproject', [
+      JSON.stringify({ type: 'operation' }),
+    ]);
+
+    expect(resolveProjectDir(transcriptPath)).toBe('/home/user/myproject');
+  });
+
+  it('returns null when transcript has no cwd and dir name is not decodable', () => {
+    // Windows dash-encoding is lossy and intentionally NOT decoded anymore
+    const transcriptPath = writeTranscript('c--users-my-project', [
+      JSON.stringify({ type: 'operation' }),
+    ]);
+
+    expect(resolveProjectDir(transcriptPath)).toBeNull();
+  });
+
+  it('returns null for missing transcript with invalid URL encoding', () => {
+    const result = resolveProjectDir('/home/user/.claude/projects/%ZZ/abc.jsonl');
     expect(result).toBeNull();
-  });
-
-  it('extracts readable projectName from Windows dash-encoded path via fallback', () => {
-    // Real Windows encoding: c--users-jeanz-onedrive-desktop-roi-labs-context-keeper
-    // Single dashes replace BOTH path separators (\) AND spaces (lossy)
-    //
-    // When filesystem search fails (as in tests), fallback heuristic extracts projectName:
-    // Takes last 1-3 segments: 'context-keeper' (last 2 segments)
-    const transcriptPath = 'C:\\Users\\user\\.claude\\projects\\c--users-jeanz-onedrive-desktop-roi-labs-context-keeper\\abc123.jsonl';
-    const result = resolveProjectDir(transcriptPath);
-
-    // Must return a path, either from filesystem or via fallback
-    expect(result).toBeTruthy();
-    if (result) {
-      const projectName = path.basename(result);
-      // Key contract: projectName must be 'context-keeper'
-      expect(projectName).toBe('context-keeper');
-    }
-  });
-
-  it('fallback extracts last segment for short encoded names', () => {
-    // Test fallback for short names like 'c--users-my-project'
-    const transcriptPath = 'C:\\mock\\.claude\\projects\\c--users-my-project\\session.jsonl';
-    const result = resolveProjectDir(transcriptPath);
-
-    expect(result).toBeTruthy();
-    if (result) {
-      const projectName = path.basename(result);
-      // For 'c--users-my-project', should extract 'my-project' (last 2 segments)
-      // or 'project' (last segment) at minimum
-      expect(projectName).toMatch(/^(my-project|project)$/);
-    }
-  });
-
-  it('handles edge case: single-segment encoded name', () => {
-    // Test edge case: c--project (minimal valid encoding)
-    const transcriptPath = 'C:\\tmp\\.claude\\projects\\c--project\\session.jsonl';
-    const result = resolveProjectDir(transcriptPath);
-
-    expect(result).toBeTruthy();
-    if (result) {
-      const projectName = path.basename(result);
-      expect(projectName).toBe('project');
-    }
   });
 });

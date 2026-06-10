@@ -5,6 +5,16 @@ import { startDaemon, PID_FILE } from './index.js';
 import { processTranscript } from './extractor.js';
 import { resolveProjectDir, findContextFiles, mergeDecisions } from './merger.js';
 import { fetchProviderConfig } from './config.js';
+import { enqueueFromHookPayload, installSessionEndHook } from './hook.js';
+
+function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { data += chunk; });
+    process.stdin.on('end', () => resolve(data));
+  });
+}
 
 const [, , command, ...args] = process.argv;
 
@@ -36,7 +46,7 @@ async function main() {
 
       const config = await fetchProviderConfig();
       if (!config) {
-        console.error('[cli] Could not fetch AI config from dashboard. Set CONTEXT_KEEPER_API_URL + CONTEXT_KEEPER_TOKEN and configure a provider in Settings.');
+        console.error('[cli] No AI provider configured. Either set a provider API key (e.g. GROQ_API_KEY) for local mode, or CONTEXT_KEEPER_API_URL + CONTEXT_KEEPER_TOKEN for dashboard mode.');
         process.exit(1);
       }
 
@@ -79,13 +89,42 @@ async function main() {
       break;
     }
 
+    case 'hook-event': {
+      // Invoked by the Claude Code SessionEnd hook; payload arrives on stdin.
+      // Always exits 0 — a failing hook must never disturb session shutdown.
+      try {
+        const payload = await readStdin();
+        const entryPath = enqueueFromHookPayload(payload);
+        if (entryPath) {
+          console.log(`[hook] Enqueued session for processing: ${entryPath}`);
+        }
+      } catch (err) {
+        console.error('[hook] Failed to enqueue session:', err);
+      }
+      process.exit(0);
+      break;
+    }
+
+    case 'install-hooks': {
+      const { settingsPath, status } = installSessionEndHook();
+      if (status === 'installed') {
+        console.log(`[cli] SessionEnd hook installed in ${settingsPath}`);
+        console.log('[cli] Sessions will now be processed the moment they end (no 5-min wait).');
+      } else {
+        console.log(`[cli] SessionEnd hook already installed in ${settingsPath}`);
+      }
+      break;
+    }
+
     default: {
-      console.log(`Context Keeper v0.1.0
+      console.log(`Context Keeper
 
 Usage:
   context-keeper start [--auto-commit]   Start the daemon
   context-keeper extract <path>          Manually extract decisions from a session
   context-keeper status                  Show daemon status
+  context-keeper install-hooks           Register the Claude Code SessionEnd hook
+  context-keeper hook-event              (internal) called by the SessionEnd hook
 `);
     }
   }

@@ -1,4 +1,4 @@
-import { getSession } from "@auth0/nextjs-auth0";
+import { getSession } from "@/lib/auth0";
 import { getStripe } from "@/lib/stripe";
 import { getPrisma } from "@/lib/prisma";
 

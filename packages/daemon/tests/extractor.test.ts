@@ -17,7 +17,10 @@ vi.mock('groq-sdk', () => ({
 }));
 
 // Import after mocks are registered
-import { readTranscript, formatTranscript, extractDecisions } from '../src/extractor.js';
+import { readTranscript, formatTranscript, chunkTranscript, extractDecisions, processTranscript } from '../src/extractor.js';
+import type { ProviderConfig } from '../src/providers/types.js';
+
+const groqConfig: ProviderConfig = { provider: 'groq', apiKey: 'test-key' };
 
 // ---------------------------------------------------------------------------
 // readTranscript
@@ -134,7 +137,7 @@ describe('extractDecisions', () => {
       choices: [{ message: { content: JSON.stringify(decisions) } }],
     });
 
-    const result = await extractDecisions('some transcript');
+    const result = await extractDecisions('some transcript', groqConfig);
     expect(result).toEqual(decisions);
   });
 
@@ -143,7 +146,7 @@ describe('extractDecisions', () => {
       choices: [{ message: { content: 'not json at all' } }],
     });
 
-    const result = await extractDecisions('transcript');
+    const result = await extractDecisions('transcript', groqConfig);
     expect(result).toEqual([]);
   });
 
@@ -159,7 +162,7 @@ describe('extractDecisions', () => {
       ],
     });
 
-    const result = await extractDecisions('transcript');
+    const result = await extractDecisions('transcript', groqConfig);
     expect(result).toEqual(decisions);
   });
 
@@ -169,7 +172,122 @@ describe('extractDecisions', () => {
       choices: [{ message: { content: JSON.stringify(decisions) } }],
     });
 
-    const result = await extractDecisions('transcript');
+    const result = await extractDecisions('transcript', groqConfig);
     expect(result).toHaveLength(10);
+  });
+
+  it('drops decisions with generic filler justifications', async () => {
+    const decisions = [
+      'decided to use version: 1 because it ensures consistency across the system',
+      'chose Prisma over Drizzle because team familiarity',
+    ];
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(decisions) } }],
+    });
+
+    const result = await extractDecisions('transcript', groqConfig);
+    expect(result).toEqual(['chose Prisma over Drizzle because team familiarity']);
+  });
+
+  it('removes near-duplicate rephrasings within a batch', async () => {
+    const decisions = [
+      'decided to use version: 1 because the index schema needs migrations',
+      'chose to set version to 1 because the index schema needs migrations',
+      'chose Auth0 over NextAuth because SSO requirement',
+    ];
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(decisions) } }],
+    });
+
+    const result = await extractDecisions('transcript', groqConfig);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toContain('decided to use version: 1');
+    expect(result[1]).toContain('Auth0');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// chunkTranscript + processTranscript (map-reduce)
+// ---------------------------------------------------------------------------
+describe('chunkTranscript', () => {
+  it('returns a single chunk for short sessions', () => {
+    const msgs = [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi' },
+    ];
+    const chunks = chunkTranscript(msgs);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toContain('[user]: Hello');
+  });
+
+  it('splits long sessions into multiple chunks instead of truncating', () => {
+    // 5 messages of 10K chars each = 50K chars > 32K MAX_CHARS
+    const msgs = Array.from({ length: 5 }, (_, i) => ({
+      role: 'user',
+      content: `msg${i} ` + 'x'.repeat(10000),
+    }));
+    const chunks = chunkTranscript(msgs);
+    expect(chunks.length).toBeGreaterThan(1);
+    // early content must survive (old truncation dropped it)
+    expect(chunks[0]).toContain('msg0');
+    expect(chunks[chunks.length - 1]).toContain('msg4');
+    for (const chunk of chunks) {
+      expect(chunk.length).toBeLessThanOrEqual(32000);
+    }
+  });
+});
+
+describe('processTranscript (map-reduce)', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ck-proc-'));
+    mockCreate.mockReset();
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('extracts decisions from every chunk of a long session', async () => {
+    const tmpFile = path.join(tmpDir, 'session.jsonl');
+    const lines = [
+      JSON.stringify({ role: 'user', content: 'early decision talk ' + 'x'.repeat(20000) }),
+      JSON.stringify({ role: 'user', content: 'late decision talk ' + 'y'.repeat(20000) }),
+    ];
+    fs.writeFileSync(tmpFile, lines.join('\n'));
+
+    mockCreate
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: '{"decisions": ["chose Postgres over SQLite because concurrent writers"]}' } }],
+      })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: '{"decisions": ["decided to cache provider config because dashboard latency"]}' } }],
+      });
+
+    const result = await processTranscript(tmpFile, groqConfig);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([
+      'chose Postgres over SQLite because concurrent writers',
+      'decided to cache provider config because dashboard latency',
+    ]);
+  });
+
+  it('salvages other chunks when one chunk fails', async () => {
+    const tmpFile = path.join(tmpDir, 'session.jsonl');
+    const lines = [
+      JSON.stringify({ role: 'user', content: 'a'.repeat(20000) }),
+      JSON.stringify({ role: 'user', content: 'b'.repeat(20000) }),
+    ];
+    fs.writeFileSync(tmpFile, lines.join('\n'));
+
+    mockCreate
+      .mockRejectedValueOnce(new Error('rate limited'))
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: '{"decisions": ["chose Groq over OpenAI because free tier"]}' } }],
+      });
+
+    const result = await processTranscript(tmpFile, groqConfig);
+    expect(result).toEqual(['chose Groq over OpenAI because free tier']);
   });
 });

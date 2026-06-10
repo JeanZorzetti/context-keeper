@@ -1,4 +1,5 @@
 import { getPrisma } from "@/lib/prisma";
+import { dedupeNearDuplicates } from "@/lib/decision-dedup";
 
 interface DecisionInput {
   text: string;
@@ -44,7 +45,9 @@ export async function POST(req: Request) {
 
   // 3. Get-or-create project by path. The daemon never calls /api/projects,
   // so first-seen projects are auto-registered here (name = path basename).
-  let project = await prisma.project.findFirst({ where: { path: projectPath } });
+  let project = await prisma.project.findFirst({
+    where: { path: projectPath, userId: user.id },
+  });
   if (!project) {
     const projectCount = await prisma.project.count({ where: { userId: user.id } });
     const planLimits: Record<string, number> = {
@@ -71,14 +74,18 @@ export async function POST(req: Request) {
     });
   }
 
-  // 4. Dedup by text — fetch existing texts for this project
+  // 4. Dedup — semantic near-duplicate check against existing project decisions
   const existing = await prisma.decision.findMany({
     where: { projectId: project.id },
     select: { text: true },
   });
-  const existingTexts = new Set(existing.map((d) => d.text));
+  const existingTexts = existing.map((d) => d.text);
 
-  const toCreate = decisions.filter((d) => d.text && !existingTexts.has(d.text));
+  const incoming = decisions.filter((d) => d.text);
+  const dedupedTexts = new Set(
+    dedupeNearDuplicates(incoming.map((d) => d.text), existingTexts)
+  );
+  const toCreate = incoming.filter((d) => dedupedTexts.has(d.text));
 
   if (toCreate.length > 0) {
     await prisma.decision.createMany({

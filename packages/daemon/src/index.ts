@@ -8,6 +8,9 @@ import { resolveProjectDir, findContextFiles, mergeDecisions } from './merger.js
 import { commitContextFiles } from './git.js';
 import { appendToIndex } from './index-writer.js';
 import { fetchProviderConfig } from './config.js';
+import { watchQueue } from './hook.js';
+import { wasProcessed, markProcessed } from './state.js';
+import { syncDecisionsToWeb, replayPendingSync } from './sync.js';
 
 export const PID_FILE = path.join(os.homedir(), '.context-keeper', 'daemon.pid');
 
@@ -20,54 +23,34 @@ export function removePidFile(): void {
   try { fs.unlinkSync(PID_FILE); } catch { /* already gone */ }
 }
 
-async function syncDecisionsToWeb(projectPath: string, decisions: string[]): Promise<void> {
-  const apiUrl = process.env.CONTEXT_KEEPER_API_URL;
-  if (!apiUrl) return; // offline mode — skip silently
-
-  const token = process.env.CONTEXT_KEEPER_TOKEN;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const body = JSON.stringify({
-    projectPath,
-    decisions: decisions.map(text => ({ text, createdAt: new Date().toISOString() })),
-  });
-
-  const attempt = async (): Promise<void> => {
-    const res = await fetch(`${apiUrl}/api/decisions`, { method: 'POST', headers, body });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json() as { saved: number; skipped: number };
-    console.log(`[daemon] Web sync: saved=${json.saved}, skipped=${json.skipped}`);
-  };
-
-  try {
-    await attempt();
-  } catch {
-    // one retry after 2 s
-    await new Promise(r => setTimeout(r, 2000));
-    try {
-      await attempt();
-    } catch (err) {
-      console.warn('[daemon] Web sync failed after retry:', err);
-    }
-  }
-}
-
 export interface DaemonOptions {
   autoCommit?: boolean;
 }
 
 /**
  * Starts the Context Keeper daemon.
- * Returns a cleanup function to stop the watcher.
+ *
+ * Sessions reach the daemon through two paths:
+ * 1. SessionEnd hook queue — instant and exact (install via `context-keeper install-hooks`)
+ * 2. Transcript watcher with 5-min inactivity debounce — fallback for users
+ *    without the hook, and retry path when hook processing fails
+ *
+ * The processed-state file keeps the two paths from double-processing.
+ *
+ * Returns a cleanup function to stop the watchers.
  */
 export function startDaemon(options: DaemonOptions = {}): () => void {
   const { autoCommit = false } = options;
 
   writePidFile();
 
-  const stop = startWatcher(async (filePath) => {
-    console.log(`[daemon] Session ended: ${filePath}`);
+  const processSession = async (filePath: string): Promise<void> => {
+    if (wasProcessed(filePath)) {
+      console.log(`[daemon] Skipping unchanged session: ${filePath}`);
+      return;
+    }
+
+    console.log(`[daemon] Processing session: ${filePath}`);
 
     const projectDir = resolveProjectDir(filePath);
     if (!projectDir) {
@@ -77,7 +60,7 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
 
     const config = await fetchProviderConfig();
     if (!config) {
-      console.warn('[daemon] Could not fetch AI config from dashboard — set CONTEXT_KEEPER_API_URL + CONTEXT_KEEPER_TOKEN and configure a provider in Settings. Skipping extraction.');
+      console.warn('[daemon] No AI provider configured. Either set a provider API key (e.g. GROQ_API_KEY) for local mode, or CONTEXT_KEEPER_API_URL + CONTEXT_KEEPER_TOKEN for dashboard mode. Skipping extraction.');
       return;
     }
 
@@ -86,11 +69,12 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
       decisions = await processTranscript(filePath, config);
     } catch (err) {
       console.error(`[daemon] Extraction failed for ${filePath}:`, err);
-      return;
+      return; // not marked processed — debounce watcher retries later
     }
 
     if (decisions.length === 0) {
       console.log(`[daemon] No decisions extracted from ${filePath}`);
+      markProcessed(filePath);
       return;
     }
 
@@ -115,7 +99,8 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
       }
     }
 
-    // Fire-and-forget sync to web dashboard (errors logged inside, never blocks local pipeline)
+    // Fire-and-forget sync to web dashboard (failures persist to the disk
+    // queue inside, never block the local pipeline)
     syncDecisionsToWeb(projectDir, decisions).catch(() => {});
 
     if (autoCommit) {
@@ -126,10 +111,19 @@ export function startDaemon(options: DaemonOptions = {}): () => void {
         console.error('[daemon] Git commit failed:', err);
       }
     }
-  });
+
+    markProcessed(filePath);
+  };
+
+  // Drain any sync payloads that failed while the daemon was down
+  replayPendingSync().catch(() => {});
+
+  const stopQueue = watchQueue(processSession);
+  const stopWatcher = startWatcher(processSession);
 
   return () => {
-    stop();
+    stopQueue();
+    stopWatcher();
     removePidFile();
   };
 }

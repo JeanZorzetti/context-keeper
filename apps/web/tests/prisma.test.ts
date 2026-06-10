@@ -1,8 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll, skip } from "vitest";
-import prisma from "@/lib/prisma";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { getPrisma } from "@/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
 
+// Integration suite — requires a live DATABASE_URL, kept skipped in CI
 describe.skip("Prisma Client", () => {
+  let prisma: PrismaClient;
+
   beforeAll(async () => {
+    prisma = getPrisma();
     // Verify connection
     await prisma.$queryRaw`SELECT 1`;
   });
