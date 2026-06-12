@@ -1,5 +1,5 @@
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://contextkeeper.dev";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://context.nimblabs.com";
 
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
 
