@@ -173,15 +173,15 @@ export default async function Home() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Link
+            <a
               href="/api/auth/login"
               className="hidden md:block text-sm hover:text-[#d0bcff] transition-colors"
             >
               Sign in
-            </Link>
-            <Link href="/api/auth/login" className={`px-4 py-2 text-sm ${ctaButton}`}>
+            </a>
+            <a href="/api/auth/login" className={`px-4 py-2 text-sm ${ctaButton}`}>
               Start free
-            </Link>
+            </a>
           </div>
         </div>
       </nav>
@@ -208,13 +208,13 @@ export default async function Home() {
               Cursor and Cline sessions — automatically.
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
-              <Link
+              <a
                 href="/api/auth/login"
                 className={`px-6 py-3 flex items-center gap-2 ${ctaButton}`}
               >
                 Start free
                 <Icon d={icons.arrow} className="w-[18px] h-[18px]" />
-              </Link>
+              </a>
               <CopyCommand />
             </div>
           </div>
@@ -472,7 +472,7 @@ export default async function Home() {
                       </li>
                     ))}
                   </ul>
-                  <Link
+                  <a
                     href="/api/auth/login"
                     className={`w-full py-2 rounded text-sm text-center transition-colors ${
                       plan.highlight
@@ -481,7 +481,7 @@ export default async function Home() {
                     }`}
                   >
                     {plan.cta}
-                  </Link>
+                  </a>
                 </div>
               ))}
             </div>
@@ -494,9 +494,9 @@ export default async function Home() {
             <h2 className="text-4xl font-bold tracking-tight mb-8">
               Stop re-explaining your codebase.
             </h2>
-            <Link href="/api/auth/login" className={`px-8 py-4 mb-8 inline-block ${ctaButton}`}>
+            <a href="/api/auth/login" className={`px-8 py-4 mb-8 inline-block ${ctaButton}`}>
               Start free
-            </Link>
+            </a>
             <CopyCommand />
           </div>
         </section>
