@@ -1,9 +1,9 @@
 ---
-title: "Claude Code Slash Commands & Custom Skills: The Complete Reference"
+title: "Claude Code Slash Commands: The Complete Reference (Built-In + Custom)"
 slug: "claude-code-slash-commands"
-description: "A complete reference for Claude Code's built-in slash commands plus how to create custom skills that extend Claude Code with your own workflows."
+description: "A complete reference for Claude Code's built-in slash commands plus how to create custom commands that extend Claude Code with your own workflows."
 cluster: "Claude Code"
-keywords: ["claude code slash commands", "claude code skills", "claude code custom commands", "claude code /help"]
+keywords: ["claude code slash commands", "claude code custom commands", "claude code commands directory", "claude code /help"]
 primaryKeyword: "claude code slash commands"
 author: "Context Keeper Team"
 datePublished: "2026-06-26"
@@ -23,9 +23,9 @@ faq:
   - q: "Can I share slash commands with my team?"
     a: "Yes. Project-level commands in .claude/commands/ are committed to version control and shared with your team. User-level commands in ~/.claude/commands/ are personal."
 relatedSlugs:
+  - "claude-code-skills-explained"
   - "claude-code-complete-guide"
   - "claude-code-hooks-explained"
-  - "claude-code-best-practices"
   - "claude-code-mcp-servers"
 draft: false
 ---
@@ -34,14 +34,16 @@ draft: false
 - Built-in: /help, /clear, /model, /review, /compact, /cost, /doctor
 - Custom: create .md files in .claude/commands/ → becomes /your-command
 - Project commands (shared) vs user commands (personal)
-- Skills = named reusable prompts that can invoke tools
+- Custom commands = reusable prompts you write as Markdown files in `.claude/commands/`
 </Tldr>
 
 ## What Are Slash Commands?
 
 **Slash commands are shortcuts that trigger specific Claude Code behaviors or invoke pre-written prompt templates.** You type `/command-name` in the Claude Code session and the command executes immediately — no need to write out a full instruction.
 
-Claude Code ships with a set of built-in slash commands. You can also create custom commands (called "skills") by writing Markdown files in your project's `.claude/commands/` directory or your personal `~/.claude/commands/` directory.
+Claude Code ships with a set of built-in slash commands. You can also create your own by writing Markdown files in your project's `.claude/commands/` directory or your personal `~/.claude/commands/` directory.
+
+Don't confuse these with **skills**, which are a different mechanism: a command is a prompt template *you* invoke by typing it, while a skill is a folder of instructions the *model* loads on its own when the task matches. If that's what you're after, read [Claude Code Skills explained](/blog/claude-code-skills-explained).
 
 ## Built-In Slash Commands Reference
 
@@ -118,11 +120,11 @@ A practical pattern: start a session with Opus for architectural planning, then 
 
 <FigureImage src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6" alt="Terminal window with slash command input showing Claude Code interactive commands interface" width={1200} height={630} credit="Unsplash" />
 
-## Custom Skills: Creating Your Own Slash Commands
+## Custom Commands: Creating Your Own Slash Commands
 
-**Skills are custom slash commands you create by writing Markdown files.** The filename becomes the command name; the file content becomes the instruction Claude Code executes.
+**Custom commands are slash commands you create by writing Markdown files.** The filename becomes the command name; the file content becomes the instruction Claude Code executes.
 
-### Creating a Project Skill
+### Creating a Project Command
 
 Create the commands directory:
 
@@ -130,7 +132,7 @@ Create the commands directory:
 mkdir -p .claude/commands
 ```
 
-Create a skill file:
+Create a command file:
 
 ```bash
 # .claude/commands/review.md
@@ -159,9 +161,9 @@ Now in any Claude Code session in this project, you can run:
 
 Claude Code executes the review prompt automatically. The session context (current files, recent edits) is available to the command.
 
-### Creating a Personal Skill
+### Creating a Personal Command
 
-Personal skills live in `~/.claude/commands/` and are available across all your projects:
+Personal commands live in `~/.claude/commands/` and are available across all your projects:
 
 ```bash
 mkdir -p ~/.claude/commands
@@ -182,9 +184,9 @@ Keep it under 100 words. Format for a team Slack message.
 
 Run `/standup` at the end of any session to get a ready-to-paste team update.
 
-## Skill with Arguments
+## Commands with Arguments
 
-Skills can accept arguments using the `$ARGUMENTS` placeholder:
+Custom commands can accept arguments using the `$ARGUMENTS` placeholder:
 
 ```bash
 # .claude/commands/test-feature.md
@@ -205,18 +207,18 @@ Usage:
 /test-feature billing
 ```
 
-The string after the command name is passed as `$ARGUMENTS` into the skill's prompt.
+The string after the command name is passed as `$ARGUMENTS` into the command's prompt.
 
-## Skill Scoping: Project vs Personal
+## Command Scoping: Project vs Personal
 
 | Location | Scope | Version controlled |
 |---|---|---|
 | `.claude/commands/` | Current project only | Yes (shared with team) |
 | `~/.claude/commands/` | All your projects | No (personal only) |
 
-Project skills are committed to version control and shared with your team. Everyone on the team gets the same `/review`, `/deploy-check`, and `/pre-merge` commands. Personal skills are yours alone — stored in your home directory and not committed anywhere.
+Project commands are committed to version control and shared with your team. Everyone on the team gets the same `/review`, `/deploy-check`, and `/pre-merge` commands. Personal commands are yours alone — stored in your home directory and not committed anywhere.
 
-## Practical Skill Examples
+## Practical Command Examples
 
 ### Pre-Merge Safety Check
 
@@ -272,12 +274,12 @@ Usage: `/explain authentication`
 
 - Built-in commands: `/clear` (reset context), `/compact` (save tokens), `/model` (switch models), `/status` (usage stats), `/help` (docs)
 - `/clear` is the most impactful command — use it between every unrelated task
-- Custom skills = Markdown files in `.claude/commands/` — filename is the command name
-- Project skills (`.claude/commands/`) are version-controlled and shared with the team
-- Personal skills (`~/.claude/commands/`) are yours across all projects
-- Skills accept arguments via `$ARGUMENTS` placeholder
-- Practical skill ideas: pre-merge check, context update, feature explanation, standup summary
+- Custom commands = Markdown files in `.claude/commands/` — filename is the command name
+- Project commands (`.claude/commands/`) are version-controlled and shared with the team
+- Personal commands (`~/.claude/commands/`) are yours across all projects
+- Custom commands accept arguments via `$ARGUMENTS` placeholder
+- Practical command ideas: pre-merge check, context update, feature explanation, standup summary
 
-Slash commands and custom skills make Claude Code sessions significantly more consistent and repeatable. Instead of typing the same quality-check prompt in every session, encode it once as a skill and run it in one keystroke.
+Slash commands and custom commands make Claude Code sessions significantly more consistent and repeatable. Instead of typing the same quality-check prompt in every session, encode it once as a command and run it in one keystroke.
 
 Related: [Claude Code Hooks Explained](/blog/claude-code-hooks-explained) · [Claude Code Best Practices for Large Codebases](/blog/claude-code-best-practices) · [Claude Code: The Complete Guide](/blog/claude-code-complete-guide)

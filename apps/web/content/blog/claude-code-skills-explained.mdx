@@ -1,0 +1,183 @@
+---
+title: "Claude Code Skills Explained: SKILL.md, Progressive Disclosure, and When They Beat CLAUDE.md"
+slug: "claude-code-skills-explained"
+description: "Claude Code Skills are folders of instructions the model loads only when it needs them. How SKILL.md works, how skills differ from slash commands, subagents, hooks and MCP — and what they still can't remember."
+cluster: "Claude Code"
+keywords: ["claude code skills", "skill.md", "agent skills", "claude code skills vs slash commands", "progressive disclosure claude code"]
+primaryKeyword: "claude code skills"
+author: "Context Keeper Team"
+datePublished: "2026-07-12"
+readingTime: 10
+heroImage:
+  src: "https://images.unsplash.com/photo-1504639725590-34d0984388bd"
+  alt: "Developer workstation with code editor open, illustrating Claude Code skills loaded on demand"
+  width: 1200
+  height: 630
+  credit: "Unsplash"
+  searchTerm: "developer workstation code editor"
+faq:
+  - q: "What are Claude Code skills?"
+    a: "A skill is a folder containing a SKILL.md file — instructions that teach Claude Code how to perform a specific kind of task, such as your deploy checklist or your code review standard. Claude reads only the skill's name and description at session start, then loads the full instructions on its own when a task matches. Skills can also bundle reference documents and executable scripts."
+  - q: "How are skills different from slash commands?"
+    a: "A slash command is a prompt template that you invoke explicitly by typing it. A skill is invoked by the model: Claude sees its description, decides the current task matches, and loads it without you asking. Skills can also bundle scripts and reference files, while a command is a single Markdown prompt. In Claude Code you can still trigger a skill by name if you want to force it."
+  - q: "Where do Claude Code skills live?"
+    a: "Project skills go in .claude/skills/<skill-name>/SKILL.md and are committed with the repo, so the whole team gets them. Personal skills go in ~/.claude/skills/<skill-name>/SKILL.md and follow you across every project. Plugins can also ship skills, which show up namespaced as plugin:skill."
+  - q: "Should I put my instructions in CLAUDE.md or in a skill?"
+    a: "CLAUDE.md is loaded into context on every single session, so everything in it is a permanent token tax. A skill's body is loaded only when it's relevant. Rule of thumb: if it applies to every task (project conventions, stack, hard rules), it belongs in CLAUDE.md. If it applies to one kind of task (releasing, writing migrations, auditing accessibility), make it a skill."
+  - q: "Why isn't my skill triggering?"
+    a: "Almost always the description. Claude only sees the name and description when deciding whether to load a skill, so the description must state when to use it and use the words a developer would actually say. Descriptions like 'Deployment helper' fail; 'Use when the user wants to deploy, ship, or release the app — covers the staging and production checklist' fires."
+relatedSlugs:
+  - "claude-code-slash-commands"
+  - "claude-code-subagents-explained"
+  - "claude-code-hooks-explained"
+  - "how-to-write-a-great-claude-md"
+draft: false
+---
+
+<Tldr>
+- A skill is a folder with a `SKILL.md` — instructions Claude Code loads **only when the task matches**
+- Claude sees just the name and description up front; the body loads on demand (progressive disclosure)
+- Skills are **model-invoked**; slash commands are **you-invoked**. That's the real difference
+- Everything in `CLAUDE.md` costs tokens in every session — a skill costs tokens only when it fires
+- Skills encode **how to do a task**. They still don't remember **what your team decided and why**
+</Tldr>
+
+## What Are Claude Code Skills?
+
+**A skill is a folder containing a `SKILL.md` file that teaches Claude Code how to perform a specific kind of task — and Claude decides on its own when to load it.**
+
+That last clause is the whole point. You don't invoke a skill the way you invoke a slash command. Claude Code reads the *name* and *description* of every available skill at session start — a handful of tokens each — and keeps them in the back of its mind. When you say "let's cut a release," it matches that against the descriptions it knows, finds your `release` skill, and reads the full instructions right then.
+
+The pattern has a name: **progressive disclosure**. Three levels:
+
+| Level | What loads | When |
+|---|---|---|
+| 1. Metadata | Skill `name` + `description` | Every session, always |
+| 2. Body | The full `SKILL.md` instructions | Only when Claude decides the skill applies |
+| 3. Bundled files | Reference docs, scripts, templates in the skill folder | Only when the instructions point Claude to them |
+
+This is why skills exist at all. You could paste your entire deploy checklist into `CLAUDE.md` — but then you pay for those tokens in every session, including the ones where you're fixing a typo. A skill lets you write ten thousand words of hard-won procedure and pay almost nothing for it until the day it's relevant.
+
+## Anatomy of a SKILL.md
+
+A skill is a directory with one required file:
+
+```
+.claude/skills/
+  release/
+    SKILL.md           # required — the instructions
+    checklist.md       # optional — loaded only if SKILL.md references it
+    verify-build.sh    # optional — a script Claude can run
+```
+
+And `SKILL.md` itself is Markdown with YAML frontmatter:
+
+```md
+---
+name: release
+description: Use when the user wants to deploy, ship, cut a release, or push to production — runs the pre-flight checks and the staging-then-prod sequence.
+---
+
+# Release
+
+## Pre-flight (all must pass before anything ships)
+
+1. `pnpm test` — full suite, no skips
+2. `npx tsc --noEmit` — zero errors
+3. Confirm the migration list in `checklist.md` matches the diff
+
+## Sequence
+
+1. Deploy to staging, wait for the health check to go green
+2. Smoke-test the three critical paths (login, checkout, webhook)
+3. Only then promote to production
+
+## Never
+
+- Never deploy on a Friday after 15:00
+- Never skip the staging step "because it's a small change" — that's how the
+  October incident happened
+```
+
+Two fields carry the whole mechanism: `name` and `description`. Everything below the frontmatter is what Claude reads *after* it has already decided to use the skill.
+
+## The Description Is the Only Thing Claude Sees
+
+This is the single most common reason a skill never fires. Claude is choosing from a list of one-line descriptions, and it has no idea what's inside your file. If the description doesn't sound like the task you just asked for, the skill stays closed.
+
+Compare:
+
+| Description | Fires? |
+|---|---|
+| `Deployment helper` | Almost never — no trigger words, no situation |
+| `Deploy skill for the team` | Rarely — describes the file, not the moment |
+| `Use when the user wants to deploy, ship, cut a release, or push to production — covers pre-flight checks and the staging-then-prod sequence.` | Reliably |
+
+Three rules that fix most non-firing skills:
+
+1. **Start with "Use when…"** and describe the *situation*, not the artifact.
+2. **Include the synonyms a real developer would type** — ship, release, deploy, push to prod. Claude is matching against the words in your request.
+3. **Say what it covers**, so Claude can rule it *out* when the task is adjacent but different.
+
+<FigureImage src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" alt="Developer writing documentation on a laptop, representing authoring a SKILL.md file" width={1200} height={630} credit="Unsplash" />
+
+## Skills vs Slash Commands vs Subagents vs Hooks vs MCP
+
+Claude Code now has five extension points and they get conflated constantly — including in older tutorials that called custom slash commands "skills," back when there was no such thing as a skill. Here's the honest breakdown:
+
+| Mechanism | Who triggers it | What it is | Reach for it when |
+|---|---|---|---|
+| **Skill** | The model | A folder of instructions (plus optional scripts and docs), loaded on demand | You have a procedure Claude should follow whenever a certain kind of task comes up |
+| **Slash command** | You | A Markdown prompt template you type as `/name` | You want to fire the same prompt on purpose, every time, with no ambiguity |
+| **Subagent** | The model (or you) | A separate agent with its own context window and system prompt | You want work done *without* polluting your main session's context |
+| **Hook** | The runtime | A shell command that fires on a lifecycle event | You need something to happen **deterministically** — a formatter, a guard, a log |
+| **MCP server** | The model | A protocol connection to external tools and data | Claude needs to *reach* something outside the repo — a database, an API, a design tool |
+
+The line that matters most in practice: **hooks are deterministic, skills are not.** A hook will run your linter every single time, no judgment involved. A skill is advice Claude chooses to follow. If a rule absolutely must hold — never commit secrets, always format on write — that's a hook, not a skill.
+
+## Skills or CLAUDE.md?
+
+Both are "instructions Claude reads." The difference is *when they cost you*.
+
+`CLAUDE.md` is loaded at the start of every session. Every line is a permanent tax on your context window — and on the model's attention, which is the scarcer resource. A 900-line `CLAUDE.md` doesn't make Claude 900 lines smarter; it makes the important 20 lines harder to see.
+
+A useful split:
+
+- **`CLAUDE.md`** — what's true for *every* task. Stack, conventions, non-negotiable rules, how to run the tests, where things live. Keep it short enough that you'd actually read it.
+- **A skill** — what's true for *one kind* of task. The release checklist. The migration procedure. The accessibility audit. The way your team writes ADRs.
+
+If you're staring at a section of `CLAUDE.md` that only matters on Fridays when you deploy, that section is a skill.
+
+## Common Mistakes
+
+**Writing a skill nobody can trigger.** Covered above — the description is the trigger surface. Fix it there, not in the body.
+
+**Cramming everything into SKILL.md.** The body is loaded whole. If it's 2,000 lines, you've rebuilt the `CLAUDE.md` problem one level down. Keep `SKILL.md` to the procedure and move the long reference material into a separate file in the folder, referenced by name — Claude will open it when it needs it.
+
+**Using a skill where you needed a hook.** "Always run the formatter before committing" is not a skill. It's a hook. A skill can be ignored under pressure; a hook cannot.
+
+**Overlapping descriptions.** Two skills whose descriptions both sound like "review the code" means Claude picks one, semi-randomly. Give each a distinct situation.
+
+**Assuming a skill remembers.** It doesn't. Which brings us to the real limit.
+
+## What Skills Still Can't Do
+
+A skill is *authored* knowledge. Someone sat down, thought about how a task should go, and wrote it out. That's enormously useful — and it's static.
+
+What a skill cannot do is capture what happened in *yesterday's session*: that you evaluated Postgres row-level security and rejected it because of the connection-pooling interaction, that you chose optimistic locking over a queue after benchmarking both, that the retry policy is 3 attempts because 5 melted the upstream API in March. Nobody writes those into a `SKILL.md`. They get decided mid-session, they live in a Slack thread, and by the next sprint the only place they exist is in one developer's head.
+
+So Claude, following your beautifully-written skills to the letter, cheerfully proposes row-level security again. That's [context rot](/blog/what-is-context-rot-in-ai-coding-agents) — and no amount of skill authoring fixes it, because the problem isn't that Claude lacks instructions. It's that Claude lacks *history*.
+
+Skills tell your agent **how to do the work**. Something else has to tell it **what you already decided and why**. That's the gap [Context Keeper](https://context.nimblabs.com) closes: it reads your Claude Code sessions, extracts the decisions and their reasoning as they happen, and makes them available to the agent in the next session — no one having to remember to write them down.
+
+## The Practical Setup
+
+If you're starting today:
+
+1. **Trim `CLAUDE.md`** to what's true for every task. Be ruthless — most are 3x too long.
+2. **Turn each recurring procedure into a skill.** Release, migrations, code review, incident response. One folder each.
+3. **Write descriptions as "Use when…"** with the words you'd actually type.
+4. **Move anything that must be guaranteed into a hook.** Skills advise; hooks enforce.
+5. **Capture decisions automatically**, because the one category of context nobody writes down by hand is the one your agent most needs.
+
+Skills made Claude Code's instructions scale. They didn't give it a memory — that's still on you to solve.
